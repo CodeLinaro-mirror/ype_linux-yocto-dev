@@ -1568,7 +1568,7 @@ static void read_symbols(const char *modname)
 	char *license;
 	char *namespace;
 	struct module *mod;
-	struct elf_info info = { };
+	struct elf_info info = { .hdr = NULL };
 	Elf_Sym *sym;
 
 	if (!parse_elf(&info, modname))
@@ -2195,7 +2195,7 @@ fail:
 
 static void write_dump(const char *fname)
 {
-	struct buffer buf = { };
+	struct buffer buf = { NULL, 0, 0 };
 	struct module *mod;
 	struct symbol *sym;
 
