@@ -2970,6 +2970,10 @@ static int rvu_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	rvu_setup_rvum_blk_revid(rvu);
 
+	err = rvu_cpt_register_interrupts(rvu);
+	if (err)
+		goto err_irq;
+
 	err = rvu_policy_init(rvu);
 	if (err)
 		goto err_dl;
