@@ -202,6 +202,9 @@ M(CPT_LF_ALLOC,		0xA00, cpt_lf_alloc, cpt_lf_alloc_req_msg,	\
 M(CPT_LF_FREE,		0xA01, cpt_lf_free, msg_req, msg_rsp)		\
 M(CPT_RD_WR_REGISTER,	0xA02, cpt_rd_wr_register,  cpt_rd_wr_reg_msg,	\
 			       cpt_rd_wr_reg_msg)			\
+M(CPT_SET_CRYPTO_GRP,	0xA03, cpt_set_crypto_grp,			\
+			       cpt_set_crypto_grp_req_msg,		\
+			       cpt_set_crypto_grp_req_msg)		\
 /* NPC mbox IDs (range 0x6000 - 0x7FFF) */				\
 M(NPC_MCAM_ALLOC_ENTRY,	0x6000, npc_mcam_alloc_entry, npc_mcam_alloc_entry_req,\
 				npc_mcam_alloc_entry_rsp)		\
@@ -1326,6 +1329,11 @@ struct tim_enable_rsp {
 	struct mbox_msghdr hdr;
 	u64	timestarted;
 	u32	currentbucket;
+};
+
+struct cpt_set_crypto_grp_req_msg {
+	struct mbox_msghdr hdr;
+	u8 crypto_eng_grp;
 };
 
 struct flow_msg {

@@ -753,6 +753,21 @@ static inline void rvu_dbg_init(struct rvu *rvu) {}
 static inline void rvu_dbg_exit(struct rvu *rvu) {}
 #endif
 
+/* CPT APIs */
+int rvu_cpt_init(struct rvu *rvu);
+int rvu_cpt_register_interrupts(struct rvu *rvu);
+int rvu_mbox_handler_cpt_set_crypto_grp(struct rvu *rvu,
+				struct cpt_set_crypto_grp_req_msg *req,
+				struct cpt_set_crypto_grp_req_msg *rsp);
+int rvu_mbox_handler_cpt_rd_wr_register(struct rvu *rvu,
+					struct cpt_rd_wr_reg_msg *req,
+					struct cpt_rd_wr_reg_msg *rsp);
+int rvu_mbox_handler_cpt_lf_alloc(struct rvu *rvu,
+				  struct cpt_lf_alloc_req_msg *req,
+				  struct msg_rsp *rsp);
+int rvu_mbox_handler_cpt_lf_free(struct rvu *rvu, struct msg_req *req,
+				 struct msg_rsp *rsp);
+
 /* TIM APIs */
 int rvu_tim_init(struct rvu *rvu);
 int rvu_mbox_handler_tim_lf_alloc(struct rvu *rvu,
