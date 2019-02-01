@@ -734,6 +734,8 @@ int rvu_mbox_handler_tim_enable_ring(struct rvu *rvu,
 int rvu_mbox_handler_tim_disable_ring(struct rvu *rvu,
 				      struct tim_ring_req *req,
 				      struct msg_rsp *rsp);
+int rvu_lf_lookup_tim_errata(struct rvu *rvu, struct rvu_block *block,
+		u16 pcifunc, int slot);
 
 bool is_npc_intf_tx(u8 intf);
 bool is_npc_intf_rx(u8 intf);
