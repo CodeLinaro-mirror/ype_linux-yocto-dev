@@ -1413,6 +1413,12 @@ static int rvu_check_rsrc_availability(struct rvu *rvu,
 	struct rvu_hwinfo *hw = rvu->hw;
 	struct rvu_block *block;
 
+	if (rvu_check_rsrc_policy(rvu, req, pcifunc)) {
+		dev_err(rvu->dev, "Func 0x%x: Resource policy check failed\n",
+			pcifunc);
+		return -EINVAL;
+	}
+
 	/* Only one NPA LF can be attached */
 	if (req->npalf && !is_blktype_attached(pfvf, BLKTYPE_NPA)) {
 		block = &hw->block[BLKADDR_NPA];
@@ -2944,7 +2950,14 @@ static int rvu_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	/* Initialize debugfs */
 	rvu_dbg_init(rvu);
 
+	err = rvu_policy_init(rvu);
+	if (err)
+		goto err_sriov;
+
 	return 0;
+
+err_sriov:
+	rvu_disable_sriov(rvu);
 err_dl:
 	rvu_unregister_dl(rvu);
 err_irq:
@@ -2977,6 +2990,7 @@ static void rvu_remove(struct pci_dev *pdev)
 	struct rvu *rvu = pci_get_drvdata(pdev);
 
 	rvu_dbg_exit(rvu);
+	rvu_policy_destroy(rvu);
 	rvu_unregister_dl(rvu);
 	rvu_unregister_interrupts(rvu);
 	rvu_flr_wq_destroy(rvu);
