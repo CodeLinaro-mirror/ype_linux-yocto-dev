@@ -717,6 +717,24 @@ void rvu_npc_get_mcam_entry_alloc_info(struct rvu *rvu, u16 pcifunc,
 void rvu_npc_get_mcam_counter_alloc_info(struct rvu *rvu, u16 pcifunc,
 					 int blkaddr, int *alloc_cnt,
 					 int *enable_cnt);
+/* TIM APIs */
+int rvu_tim_init(struct rvu *rvu);
+int rvu_mbox_handler_tim_lf_alloc(struct rvu *rvu,
+				  struct tim_lf_alloc_req *req,
+				  struct tim_lf_alloc_rsp *rsp);
+int rvu_mbox_handler_tim_lf_free(struct rvu *rvu,
+				 struct tim_ring_req *req,
+				 struct msg_rsp *rsp);
+int rvu_mbox_handler_tim_config_ring(struct rvu *rvu,
+				     struct tim_config_req *req,
+				     struct msg_rsp *rsp);
+int rvu_mbox_handler_tim_enable_ring(struct rvu *rvu,
+				     struct tim_ring_req *req,
+				     struct tim_enable_rsp *rsp);
+int rvu_mbox_handler_tim_disable_ring(struct rvu *rvu,
+				      struct tim_ring_req *req,
+				      struct msg_rsp *rsp);
+
 bool is_npc_intf_tx(u8 intf);
 bool is_npc_intf_rx(u8 intf);
 bool is_npc_interface_valid(struct rvu *rvu, u8 intf);

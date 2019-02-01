@@ -699,7 +699,7 @@ static void rvu_free_hw_resources(struct rvu *rvu)
 		kfree(block->lf.bmap);
 	}
 
-	/* Free MSIX bitmaps */
+	/* Free MSIX and TIM bitmaps */
 	for (id = 0; id < hw->total_pfs; id++) {
 		pfvf = &rvu->pf[id];
 		kfree(pfvf->msix.bmap);
@@ -1045,6 +1045,10 @@ cpt:
 		goto cgx_err;
 
 	err = rvu_sso_init(rvu);
+	if (err)
+		goto cgx_err;
+
+	err = rvu_tim_init(rvu);
 	if (err)
 		goto cgx_err;
 
