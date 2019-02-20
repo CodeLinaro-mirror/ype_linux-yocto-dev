@@ -978,6 +978,7 @@ static void mv3310_init_supported_interfaces(unsigned long *mask)
 	__set_bit(PHY_INTERFACE_MODE_XAUI, mask);
 	__set_bit(PHY_INTERFACE_MODE_RXAUI, mask);
 	__set_bit(PHY_INTERFACE_MODE_10GBASER, mask);
+	__set_bit(PHY_INTERFACE_MODE_5GBASER, mask);
 	__set_bit(PHY_INTERFACE_MODE_USXGMII, mask);
 }
 
