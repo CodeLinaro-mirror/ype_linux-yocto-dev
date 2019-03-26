@@ -57,6 +57,10 @@ struct cpt_ctx {
 	struct rvu *rvu;
 };
 
+struct cpt_dump_ctx {
+	char    e_type[NAME_SIZE];
+};
+
 struct rvu_debugfs {
 	struct dentry *root;
 	struct dentry *cgx_root;
@@ -75,6 +79,7 @@ struct rvu_debugfs {
 	struct dump_ctx nix_rq_ctx;
 	struct dump_ctx nix_sq_ctx;
 	struct cpt_ctx cpt_ctx[MAX_CPT_BLKS];
+	struct cpt_dump_ctx cpt_dump_ctx;
 	int npa_qsize_id;
 	int nix_qsize_id;
 };
