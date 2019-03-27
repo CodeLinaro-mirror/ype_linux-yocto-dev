@@ -726,6 +726,7 @@ static inline void rvu_dbg_exit(struct rvu *rvu) {}
 /* CPT APIs */
 int rvu_cpt_init(struct rvu *rvu);
 int rvu_cpt_register_interrupts(struct rvu *rvu);
+void rvu_cpt_unregister_interrupts(struct rvu *rvu);
 
 /* TIM APIs */
 int rvu_tim_init(struct rvu *rvu);
