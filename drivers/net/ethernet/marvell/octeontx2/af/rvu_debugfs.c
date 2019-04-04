@@ -1632,6 +1632,15 @@ static int rvu_dbg_nix_qsize_display(struct seq_file *filp, void *unused)
 
 RVU_DEBUG_SEQ_FOPS(nix_qsize, nix_qsize_display, nix_qsize_write);
 
+static ssize_t rvu_dbg_nix_tx_stall_hwissue_display(struct file *filp,
+						    char __user *buffer,
+						    size_t count, loff_t *ppos)
+{
+	return rvu_nix_get_tx_stall_counters(filp->private_data, buffer, ppos);
+}
+
+RVU_DEBUG_FOPS(nix_tx_stall_hwissue, nix_tx_stall_hwissue_display, NULL);
+
 static void rvu_dbg_nix_init(struct rvu *rvu, int blkaddr)
 {
 	struct nix_hw *nix_hw;
@@ -1664,6 +1673,8 @@ static void rvu_dbg_nix_init(struct rvu *rvu, int blkaddr)
 			    &rvu_dbg_nix_ndc_rx_hits_miss_fops);
 	debugfs_create_file("qsize", 0600, rvu->rvu_dbg.nix, rvu,
 			    &rvu_dbg_nix_qsize_fops);
+	debugfs_create_file("tx_stall_hwissue", 0600, rvu->rvu_dbg.nix,
+				    rvu, &rvu_dbg_nix_tx_stall_hwissue_fops);
 }
 
 static void rvu_dbg_npa_init(struct rvu *rvu)
