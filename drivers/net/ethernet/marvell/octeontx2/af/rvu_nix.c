@@ -3316,6 +3316,9 @@ static void nix_link_config(struct rvu *rvu, int blkaddr)
 	 */
 	for (cgx = 0; cgx < hw->cgx; cgx++) {
 		lmac_cnt = cgx_get_lmac_cnt(rvu_cgx_pdata(cgx, rvu));
+		/* Skip when cgx is not available or lmac cnt is zero */
+		if (lmac_cnt <= 0)
+			continue;
 		tx_credits = ((rvu_cgx_get_fifolen(rvu) / lmac_cnt) -
 			       lmac_max_frs) / 16;
 		/* Enable credits and set credit pkt count to max allowed */
