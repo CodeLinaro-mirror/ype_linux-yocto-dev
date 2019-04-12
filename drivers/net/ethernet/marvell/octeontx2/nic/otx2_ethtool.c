@@ -21,6 +21,7 @@
 
 #define DRV_NAME	"octeontx2-nicpf"
 #define DRV_VF_NAME	"octeontx2-nicvf"
+#define DRV_VF_VERSION	"1.0"
 
 #define OTX2_DEFAULT_ACTION	0x1
 
@@ -1678,6 +1679,40 @@ int otx2_destroy_ethtool_flows(struct otx2_nic *pfvf)
 }
 
 /* VF's ethtool APIs */
+int otx2_delete_vf_ethtool_flows(struct otx2_nic *pfvf)
+{
+	struct npc_delete_flow_req *req;
+	struct otx2_flow *iter, *tmp;
+	int err;
+
+	mutex_lock(&pfvf->mbox.lock);
+	req = otx2_mbox_alloc_msg_npc_delete_flow(&pfvf->mbox);
+	if (!req) {
+		mutex_unlock(&pfvf->mbox.lock);
+		return -ENOMEM;
+	}
+
+	req->all_vfs = 1;
+	/* Send message to AF */
+	err = otx2_sync_mbox_msg(&pfvf->mbox);
+	if (err) {
+		mutex_unlock(&pfvf->mbox.lock);
+		return err;
+	}
+
+	mutex_unlock(&pfvf->mbox.lock);
+	/* AF deleted VF entries now remove from ethtool list */
+	list_for_each_entry_safe(iter, tmp, &pfvf->flows, list) {
+		if (iter->is_vf) {
+			list_del(&iter->list);
+			kfree(iter);
+			pfvf->nr_flows--;
+		}
+	}
+
+	return 0;
+}
+
 static void otx2vf_get_drvinfo(struct net_device *netdev,
 			       struct ethtool_drvinfo *info)
 {
