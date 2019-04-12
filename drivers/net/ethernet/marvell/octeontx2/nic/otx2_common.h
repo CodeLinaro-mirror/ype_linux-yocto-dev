@@ -342,6 +342,12 @@ struct otx2_nic {
 	struct work_struct	reset_task;
 	u16			rxvlan_entry;
 	bool			rxvlan_alloc;
+
+	bool			entries_alloc;
+	u32			max_flows;
+	u32			nr_flows;
+	u16			entry_list[NPC_MAX_NONCONTIG_ENTRIES];
+	struct list_head	flows;
 	struct workqueue_struct	*flr_wq;
 	struct flr_work		*flr_wrk;
 	struct refill_work	*refill_wrk;
@@ -818,6 +824,7 @@ int otx2_del_macfilter(struct net_device *netdev, const u8 *mac);
 int otx2_add_macfilter(struct net_device *netdev, const u8 *mac);
 int otx2_enable_rxvlan(struct otx2_nic *pf, bool enable);
 int otx2_install_rxvlan_offload_flow(struct otx2_nic *pfvf);
+int otx2_destroy_ethtool_flows(struct otx2_nic *pfvf);
 u16 otx2_get_max_mtu(struct otx2_nic *pfvf);
 /* tc support */
 int otx2_init_tc(struct otx2_nic *nic);

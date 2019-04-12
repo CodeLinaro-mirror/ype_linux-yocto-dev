@@ -22,6 +22,8 @@
 #define DRV_NAME	"octeontx2-nicpf"
 #define DRV_VF_NAME	"octeontx2-nicvf"
 
+#define OTX2_DEFAULT_ACTION	0x1
+
 struct otx2_stat {
 	char name[ETH_GSTRING_LEN];
 	unsigned int index;
@@ -702,6 +704,16 @@ static int otx2vf_get_rxnfc(struct net_device *dev,
 		nfc->data = pfvf->hw.rx_queues;
 		ret = 0;
 		break;
+	case ETHTOOL_GRXCLSRLCNT:
+		nfc->rule_cnt = pfvf->nr_flows;
+		ret = 0;
+		break;
+	case ETHTOOL_GRXCLSRULE:
+		ret = otx2_get_flow(pfvf, nfc,  nfc->fs.location);
+		break;
+	case ETHTOOL_GRXCLSRLALL:
+		ret = otx2_get_all_flows(pfvf, nfc, rules);
+		break;
 	case ETHTOOL_GRXFH:
 		return otx2_get_rss_hash_opts(pfvf, nfc);
 	default:
@@ -712,12 +724,21 @@ static int otx2vf_get_rxnfc(struct net_device *dev,
 
 static int otx2vf_set_rxnfc(struct net_device *dev, struct ethtool_rxnfc *nfc)
 {
+	bool ntuple = !!(dev->features & NETIF_F_NTUPLE);
 	struct otx2_nic *pfvf = netdev_priv(dev);
 	int ret = -EOPNOTSUPP;
 
 	switch (nfc->cmd) {
 	case ETHTOOL_SRXFH:
 		ret = otx2_set_rss_hash_opts(pfvf, nfc);
+		break;
+	case ETHTOOL_SRXCLSRLINS:
+		if (netif_running(dev) && ntuple)
+			ret = otx2_add_flow(pfvf, nfc);
+		break;
+	case ETHTOOL_SRXCLSRLDEL:
+		if (netif_running(dev) && ntuple)
+			ret = otx2_remove_flow(pfvf, nfc->fs.location);
 		break;
 	default:
 		break;

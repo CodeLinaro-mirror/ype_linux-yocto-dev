@@ -803,6 +803,47 @@ int otx2_remove_flow(struct otx2_nic *pfvf, u32 location)
 	return 0;
 }
 
+int otx2_destroy_ethtool_flows(struct otx2_nic *pfvf)
+{
+	struct npc_mcam_free_entry_req *req;
+	struct otx2_flow *iter, *tmp;
+	int err;
+
+	if (!pfvf->entries_alloc)
+		return 0;
+
+	/* remove all flows */
+	err = otx2_remove_flow_msg(pfvf, 0, true);
+	if (err)
+		return err;
+
+	list_for_each_entry_safe(iter, tmp, &pfvf->flows, list) {
+		list_del(&iter->list);
+		kfree(iter);
+		pfvf->nr_flows--;
+	}
+
+	mutex_lock(&pfvf->mbox.lock);
+	req = otx2_mbox_alloc_msg_npc_mcam_free_entry(&pfvf->mbox);
+	if (!req) {
+		mutex_unlock(&pfvf->mbox.lock);
+		return -ENOMEM;
+	}
+
+	req->all = 1;
+	/* Send message to AF to free MCAM entries */
+	err = otx2_sync_mbox_msg(&pfvf->mbox);
+	if (err) {
+		mutex_unlock(&pfvf->mbox.lock);
+		return err;
+	}
+
+	pfvf->entries_alloc = false;
+	mutex_unlock(&pfvf->mbox.lock);
+
+	return 0;
+}
+
 void otx2_rss_ctx_flow_del(struct otx2_nic *pfvf, int ctx_id)
 {
 	struct otx2_flow *flow, *tmp;
