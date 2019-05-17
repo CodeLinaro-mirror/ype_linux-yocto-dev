@@ -316,9 +316,6 @@ static void nix_interface_deinit(struct rvu *rvu, u16 pcifunc, u8 nixlf)
 			pcifunc);
 	}
 
-	/* Free and disable any MCAM entries used by this NIX LF */
-	rvu_npc_disable_mcam_entries(rvu, pcifunc, nixlf);
-
 	/* Free any tx vtag def entries used by this NIX LF */
 	nix_free_tx_vtag_entries(rvu, pcifunc);
 
