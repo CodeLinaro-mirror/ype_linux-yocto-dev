@@ -172,6 +172,10 @@ M(CGX_MAC_MAX_ENTRIES_GET, 0x219, cgx_mac_max_entries_get, msg_req,    \
 				cgx_max_dmac_entries_get_rsp)		\
 M(CGX_SET_LINK_STATE,	0x220, cgx_set_link_state,    \
 				cgx_set_link_state_msg, msg_rsp)	\
+M(CGX_GET_PHY_MOD_TYPE, 0x221, cgx_get_phy_mod_type, msg_req, \
+				cgx_phy_mod_type) \
+M(CGX_SET_PHY_MOD_TYPE, 0x222, cgx_set_phy_mod_type, cgx_phy_mod_type,	\
+				msg_rsp) \
  /* NPA mbox IDs (range 0x400 - 0x5FF) */				\
 /* NPA mbox IDs (range 0x400 - 0x5FF) */				\
 M(NPA_LF_ALLOC,		0x400, npa_lf_alloc,				\
@@ -607,6 +611,11 @@ struct rpm_stats_rsp {
 #define RPM_TX_STATS_COUNT		34
 	u64 rx_stats[RPM_RX_STATS_COUNT];
 	u64 tx_stats[RPM_TX_STATS_COUNT];
+};
+
+struct cgx_phy_mod_type {
+	struct mbox_msghdr hdr;
+	int mod;
 };
 
 /* NPA mbox message formats */
