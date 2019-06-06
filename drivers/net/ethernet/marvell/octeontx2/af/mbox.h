@@ -172,6 +172,10 @@ M(CGX_MAC_MAX_ENTRIES_GET, 0x219, cgx_mac_max_entries_get, msg_req,    \
 				cgx_max_dmac_entries_get_rsp)		\
 M(CGX_SET_LINK_STATE,	0x21a, cgx_set_link_state,    \
 				cgx_set_link_state_msg, msg_rsp)	\
+M(CGX_GET_PHY_MOD_TYPE, 0x21b, cgx_get_phy_mod_type, msg_req, \
+				cgx_phy_mod_type) \
+M(CGX_SET_PHY_MOD_TYPE, 0x21c, cgx_set_phy_mod_type, cgx_phy_mod_type,	\
+				msg_rsp) \
  /* NPA mbox IDs (range 0x400 - 0x5FF) */				\
 /* NPA mbox IDs (range 0x400 - 0x5FF) */				\
 M(NPA_LF_ALLOC,		0x400, npa_lf_alloc,				\
@@ -542,6 +546,11 @@ struct fec_mode {
 struct cgx_set_link_state_msg {
 	struct mbox_msghdr hdr;
 	u8 enable; /* '1' for link up, '0' for link down */
+};
+
+struct cgx_phy_mod_type {
+	struct mbox_msghdr hdr;
+	int mod;
 };
 
 struct sfp_eeprom_s {

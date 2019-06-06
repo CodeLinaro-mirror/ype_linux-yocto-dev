@@ -257,6 +257,12 @@ struct cgx_lnk_sts {
 #define CMDLINKCHANGE_SPEED	GENMASK_ULL(13, 10)
 
 #define CMDSETFEC			GENMASK_ULL(9, 8)
+/* command argument to be passed for cmd ID - CGX_CMD_SET_PHY_MOD_TYPE */
+#define CMDSETPHYMODTYPE	GENMASK_ULL(8, 8)
+
+/* response to cmd ID - RESP_GETPHYMODTYPE */
+#define RESP_GETPHYMODTYPE	GENMASK_ULL(9, 9)
+
 /* command argument to be passed for cmd ID - CGX_CMD_MODE_CHANGE */
 #define CMDMODECHANGE_SPEED		GENMASK_ULL(11, 8)
 #define CMDMODECHANGE_DUPLEX		GENMASK_ULL(12, 12)
