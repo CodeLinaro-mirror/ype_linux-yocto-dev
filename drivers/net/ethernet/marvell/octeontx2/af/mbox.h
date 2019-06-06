@@ -170,6 +170,8 @@ M(CGX_MAC_ADDR_DEL,	0x218, cgx_mac_addr_del, cgx_mac_addr_del_req,    \
 				msg_rsp)		\
 M(CGX_MAC_MAX_ENTRIES_GET, 0x219, cgx_mac_max_entries_get, msg_req,    \
 				cgx_max_dmac_entries_get_rsp)		\
+M(CGX_SET_LINK_STATE,	0x220, cgx_set_link_state,    \
+				cgx_set_link_state_msg, msg_rsp)	\
  /* NPA mbox IDs (range 0x400 - 0x5FF) */				\
 /* NPA mbox IDs (range 0x400 - 0x5FF) */				\
 M(NPA_LF_ALLOC,		0x400, npa_lf_alloc,				\
@@ -521,6 +523,11 @@ enum fec_type {
 struct fec_mode {
 	struct mbox_msghdr hdr;
 	int fec;
+};
+
+struct cgx_set_link_state_msg {
+	struct mbox_msghdr hdr;
+	u8 enable; /* '1' for link up, '0' for link down */
 };
 
 struct sfp_eeprom_s {
