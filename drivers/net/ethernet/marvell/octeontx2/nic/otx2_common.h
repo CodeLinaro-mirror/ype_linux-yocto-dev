@@ -826,6 +826,7 @@ int otx2_enable_rxvlan(struct otx2_nic *pf, bool enable);
 int otx2_install_rxvlan_offload_flow(struct otx2_nic *pfvf);
 int otx2_destroy_ethtool_flows(struct otx2_nic *pfvf);
 int otx2_delete_vf_ethtool_flows(struct otx2_nic *pfvf);
+int otx2_delete_ethtool_flows_for_vf(struct otx2_nic *pfvf, int vf);
 u16 otx2_get_max_mtu(struct otx2_nic *pfvf);
 /* tc support */
 int otx2_init_tc(struct otx2_nic *nic);

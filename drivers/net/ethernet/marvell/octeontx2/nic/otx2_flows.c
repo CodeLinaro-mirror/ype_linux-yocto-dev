@@ -877,6 +877,25 @@ int otx2_delete_vf_ethtool_flows(struct otx2_nic *pfvf)
 	return 0;
 }
 
+int otx2_delete_ethtool_flows_for_vf(struct otx2_nic *pfvf, int vf)
+{
+	struct otx2_flow *iter, *tmp;
+	int err;
+
+	list_for_each_entry_safe(iter, tmp, &pfvf->flows, list) {
+		if (iter->vf != vf)
+			continue;
+		err = otx2_remove_flow_msg(pfvf, iter->entry, false);
+		if (err)
+			return err;
+		list_del(&iter->list);
+		kfree(iter);
+		pfvf->nr_flows--;
+	}
+
+	return 0;
+}
+
 void otx2_rss_ctx_flow_del(struct otx2_nic *pfvf, int ctx_id)
 {
 	struct otx2_flow *flow, *tmp;
