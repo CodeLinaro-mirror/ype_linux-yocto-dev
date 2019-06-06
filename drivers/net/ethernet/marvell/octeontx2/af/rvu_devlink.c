@@ -181,7 +181,7 @@ static irqreturn_t rvu_nix_af_rvu_ras_handler(int irq, void *rvu_irq)
 		return IRQ_NONE;
 
 	nix_event_context = rvu_dl->rvu_nix_health_reporter->nix_event_ctx;
-	intr = rvu_read64(rvu, blkaddr, NIX_AF_ERR_INT);
+	intr = rvu_read64(rvu, blkaddr, NIX_AF_RAS);
 	nix_event_context->nix_af_rvu_ras = intr;
 
 	/* Clear interrupts */
