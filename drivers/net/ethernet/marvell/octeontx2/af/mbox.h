@@ -164,6 +164,12 @@ M(CGX_SET_LINK_MODE,	0x214, cgx_set_link_mode, cgx_set_link_mode_req,\
 M(CGX_FEATURES_GET,	0x215, cgx_features_get, msg_req,		\
 			       cgx_features_info_msg)			\
 M(RPM_STATS,		0x216, rpm_stats, msg_req, rpm_stats_rsp)	\
+M(CGX_MAC_ADDR_ADD,	0x217, cgx_mac_addr_add, cgx_mac_addr_add_req,    \
+				cgx_mac_addr_add_rsp)		\
+M(CGX_MAC_ADDR_DEL,	0x218, cgx_mac_addr_del, cgx_mac_addr_del_req,    \
+				msg_rsp)		\
+M(CGX_MAC_MAX_ENTRIES_GET, 0x219, cgx_mac_max_entries_get, msg_req,    \
+				cgx_max_dmac_entries_get_rsp)		\
  /* NPA mbox IDs (range 0x400 - 0x5FF) */				\
 /* NPA mbox IDs (range 0x400 - 0x5FF) */				\
 M(NPA_LF_ALLOC,		0x400, npa_lf_alloc,				\
@@ -440,6 +446,38 @@ struct cgx_fec_stats_rsp {
 struct cgx_mac_addr_set_or_get {
 	struct mbox_msghdr hdr;
 	u8 mac_addr[ETH_ALEN];
+};
+
+/* Structure for requesting the operation to
+ * add DMAC filter entry into CGX interface
+ */
+struct cgx_mac_addr_add_req {
+	struct mbox_msghdr hdr;
+	u8 mac_addr[ETH_ALEN];
+};
+
+/* Structure for response against the operation to
+ * add DMAC filter entry into CGX interface
+ */
+struct cgx_mac_addr_add_rsp {
+	struct mbox_msghdr hdr;
+	u8 index;
+};
+
+/* Structure for requesting the operation to
+ * delete DMAC filter entry from CGX interface
+ */
+struct cgx_mac_addr_del_req {
+	struct mbox_msghdr hdr;
+	u8 index;
+};
+
+/* Structure for response against the operation to
+ * get maximum supported DMAC filter entries
+ */
+struct cgx_max_dmac_entries_get_rsp {
+	struct mbox_msghdr hdr;
+	u8 max_dmac_filters;
 };
 
 struct cgx_link_user_info {

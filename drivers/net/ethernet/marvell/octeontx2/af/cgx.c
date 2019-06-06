@@ -202,11 +202,107 @@ int cgx_lmac_addr_set(u8 cgx_id, u8 lmac_id, u8 *mac_addr)
 		  cfg | CGX_DMAC_CAM_ADDR_ENABLE | ((u64)lmac_id << 49));
 
 	cfg = cgx_read(cgx_dev, lmac_id, CGXX_CMRX_RX_DMAC_CTL0);
-	cfg |= CGX_DMAC_CTL0_CAM_ENABLE;
+	cfg |= (CGX_DMAC_CTL0_CAM_ENABLE | CGX_DMAC_BCAST_MODE |
+		CGX_DMAC_MCAST_MODE);
 	cgx_write(cgx_dev, lmac_id, CGXX_CMRX_RX_DMAC_CTL0, cfg);
 
 	return 0;
 }
+
+int cgx_lmac_addr_add(u8 cgx_id, u8 lmac_id, u8 *mac_addr)
+{
+	struct cgx *cgx_dev = cgx_get_pdata(cgx_id);
+	struct lmac *lmac = lmac_pdata(lmac_id, cgx_dev);
+	int index, idx;
+	struct mac_ops *mac_ops;
+	u64 cfg = 0;
+
+	mac_ops = cgx_dev->mac_ops;
+
+	/* Get available index where entry is to be installed */
+	idx = rvu_alloc_rsrc(&lmac->mac_to_index_bmap);
+	if (idx < 0)
+		return idx;
+
+	/* Calculate real index of CGX DMAC table */
+	index = lmac_id * lmac->mac_to_index_bmap.max + idx;
+
+	cfg = mac2u64 (mac_addr);
+	cfg |= CGX_DMAC_CAM_ADDR_ENABLE;
+	cfg |= ((u64)lmac_id << 49);
+	cgx_write(cgx_dev, 0, (CGXX_CMRX_RX_DMAC_CAM0 + (index * 0x8)), cfg);
+
+	cfg = cgx_read(cgx_dev, lmac_id, CGXX_CMRX_RX_DMAC_CTL0);
+	cfg |= (CGX_DMAC_BCAST_MODE | CGX_DMAC_MCAST_MODE |
+		CGX_DMAC_CAM_ACCEPT);
+	cgx_write(cgx_dev, lmac_id, CGXX_CMRX_RX_DMAC_CTL0, cfg);
+
+	return idx;
+}
+EXPORT_SYMBOL(cgx_lmac_addr_add);
+
+int cgx_lmac_addr_reset(u8 cgx_id, u8 lmac_id)
+{
+	struct cgx *cgx_dev = cgx_get_pdata(cgx_id);
+	struct lmac *lmac = lmac_pdata(lmac_id, cgx_dev);
+	u8 index = 0;
+	struct mac_ops *mac_ops;
+	u64 cfg;
+
+	mac_ops = cgx_dev->mac_ops;
+
+	/*  Clear the reserved bit for default mac address */
+	clear_bit(0, lmac->mac_to_index_bmap.bmap);
+
+	index = lmac_id * lmac->mac_to_index_bmap.max + index;
+	cgx_write(cgx_dev, 0, (CGXX_CMRX_RX_DMAC_CAM0 + (index * 0x8)), 0);
+
+	/* Reset CGXX_CMRX_RX_DMAC_CTL0 register to default state */
+	cfg = cgx_read(cgx_dev, lmac_id, CGXX_CMRX_RX_DMAC_CTL0);
+	cfg &= ~CGX_DMAC_CAM_ACCEPT;
+	cfg |= (CGX_DMAC_BCAST_MODE | CGX_DMAC_MCAST_MODE);
+	cgx_write(cgx_dev, lmac_id, CGXX_CMRX_RX_DMAC_CTL0, cfg);
+
+	return 0;
+}
+EXPORT_SYMBOL(cgx_lmac_addr_reset);
+
+int cgx_lmac_addr_del(u8 cgx_id, u8 lmac_id, u8 index)
+{
+	struct cgx *cgx_dev = cgx_get_pdata(cgx_id);
+	struct lmac *lmac = lmac_pdata(lmac_id, cgx_dev);
+	struct mac_ops *mac_ops;
+
+	mac_ops = cgx_dev->mac_ops;
+
+	/* Validate the index */
+	if (index < 0 || index >= lmac->mac_to_index_bmap.max)
+		return -EINVAL;
+
+	/* Skip deletion for reserved index i.e. index 0 */
+	if (index == 0)
+		return 0;
+
+	rvu_free_rsrc(&lmac->mac_to_index_bmap, index);
+
+	index = lmac_id * lmac->mac_to_index_bmap.max + index;
+	cgx_write(cgx_dev, 0, (CGXX_CMRX_RX_DMAC_CAM0 + (index * 0x8)), 0);
+
+	return 0;
+}
+EXPORT_SYMBOL(cgx_lmac_addr_del);
+
+int cgx_lmac_addr_max_entries_get(u8 cgx_id, u8 lmac_id)
+{
+	struct cgx *cgx_dev = cgx_get_pdata(cgx_id);
+	struct lmac *lmac = lmac_pdata(lmac_id, cgx_dev);
+
+	if (lmac)
+		return lmac->mac_to_index_bmap.max;
+
+	return 0;
+}
+EXPORT_SYMBOL(cgx_lmac_addr_max_entries_get);
 
 u64 cgx_lmac_addr_get(u8 cgx_id, u8 lmac_id)
 {
@@ -1247,6 +1343,15 @@ static int cgx_lmac_init(struct cgx *cgx)
 		}
 
 		lmac->cgx = cgx;
+		lmac->mac_to_index_bmap.max =
+				MAX_DMAC_ENTRIES_PER_CGX / cgx->lmac_count;
+		err = rvu_alloc_bitmap(&lmac->mac_to_index_bmap);
+		if (err)
+			return err;
+
+		/* Reserve first entry for default MAC address */
+		set_bit(0, lmac->mac_to_index_bmap.bmap);
+
 		init_waitqueue_head(&lmac->wq_cmd_cmplt);
 		mutex_init(&lmac->cmd_lock);
 		spin_lock_init(&lmac->event_cb_lock);
@@ -1287,6 +1392,7 @@ static int cgx_lmac_exit(struct cgx *cgx)
 			continue;
 		cgx->mac_ops->mac_pause_frm_config(cgx, lmac->lmac_id, false);
 		cgx_configure_interrupt(cgx, lmac, lmac->lmac_id, true);
+		kfree(lmac->mac_to_index_bmap.bmap);
 		kfree(lmac->name);
 		kfree(lmac);
 	}
