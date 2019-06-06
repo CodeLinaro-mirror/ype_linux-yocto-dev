@@ -2717,6 +2717,7 @@ static int otx2_sriov_disable(struct pci_dev *pdev)
 	if (!numvfs)
 		return 0;
 
+	otx2_delete_vf_ethtool_flows(pf);
 	pci_disable_sriov(pdev);
 
 	for (i = 0; i < pci_num_vf(pdev); i++)
@@ -2725,7 +2726,6 @@ static int otx2_sriov_disable(struct pci_dev *pdev)
 
 	otx2_disable_flr_me_intr(pf);
 	otx2_flr_wq_destroy(pf);
-	otx2_delete_vf_ethtool_flows(pf);
 	otx2_disable_pfvf_mbox_intr(pf, numvfs);
 	otx2_pfvf_mbox_destroy(pf);
 
@@ -2762,12 +2762,12 @@ static void otx2_remove(struct pci_dev *pdev)
 	otx2_cgx_config_linkevents(pf, false);
 
 	unregister_netdev(netdev);
-	otx2_destroy_ethtool_flows(pf);
 	otx2_sriov_disable(pf->pdev);
 	if (pf->otx2_wq)
 		destroy_workqueue(pf->otx2_wq);
 
 	otx2_ptp_destroy(pf);
+	otx2_destroy_ethtool_flows(pf);
 	otx2_mcam_flow_del(pf);
 	otx2_shutdown_tc(pf);
 	otx2_detach_resources(&pf->mbox);
