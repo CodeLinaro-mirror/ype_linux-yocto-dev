@@ -28,6 +28,7 @@
 
 /* Subsystem Device ID */
 #define PCI_SUBSYS_DEVID_96XX                  0xB200
+#define PCI_SUBSYS_DEVID_95XX                  0xB200
 #define PCI_SUBSYS_DEVID_CN10K_A	       0xB900
 
 /* PCI BAR nos */
@@ -511,6 +512,14 @@ static inline bool is_rvu_96xx_B0(struct rvu *rvu)
 
 	return ((pdev->revision == 0x00) || (pdev->revision == 0x01)) &&
 		(pdev->subsystem_device == PCI_SUBSYS_DEVID_96XX);
+}
+
+static inline bool is_rvu_95xx_A0(struct rvu *rvu)
+{
+	struct pci_dev *pdev = rvu->pdev;
+
+	return (pdev->revision == 0x10) &&
+		(pdev->subsystem_device == PCI_SUBSYS_DEVID_95XX);
 }
 
 /* REVID for PCIe devices.
