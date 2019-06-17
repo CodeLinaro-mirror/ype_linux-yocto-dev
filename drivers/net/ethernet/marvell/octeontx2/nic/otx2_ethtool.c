@@ -1085,10 +1085,15 @@ static int otx2_set_fecparam(struct net_device *netdev,
 
 	rsp = (struct fec_mode *)otx2_mbox_get_rsp(&pfvf->mbox.mbox,
 						   0, &req->hdr);
-	if (rsp->fec >= 0)
+	if (rsp->fec >= 0) {
 		pfvf->linfo.fec = rsp->fec;
-	else
+		pfvf->hw.cgx_fec_corr_blks = 0;
+		pfvf->hw.cgx_fec_uncorr_blks = 0;
+
+	} else {
 		err = rsp->fec;
+	}
+
 end:
 	mutex_unlock(&mbox->lock);
 	return err;
