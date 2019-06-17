@@ -1155,8 +1155,11 @@ int cgx_set_fec(u64 fec, int cgx_id, int lmac_id)
 	req = FIELD_SET(CMDREG_ID, CGX_CMD_SET_FEC, req);
 	req = FIELD_SET(CMDSETFEC, fec, req);
 	err = cgx_fwi_cmd_generic(req, &resp, cgx, lmac_id);
-	if (err)
-		return err;
+	if (!err) {
+		cgx->lmac_idmap[lmac_id]->link_info.fec =
+			FIELD_GET(RESP_LINKSTAT_FEC, resp);
+		return cgx->lmac_idmap[lmac_id]->link_info.fec;
+	}
 
 	cgx->lmac_idmap[lmac_id]->link_info.fec =
 			FIELD_GET(RESP_LINKSTAT_FEC, resp);
