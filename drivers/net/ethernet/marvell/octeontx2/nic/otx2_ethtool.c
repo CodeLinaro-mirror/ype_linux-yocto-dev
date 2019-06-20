@@ -25,6 +25,11 @@
 
 #define OTX2_DEFAULT_ACTION	0x1
 
+static const char otx2_priv_flags_strings[][ETH_GSTRING_LEN] = {
+#define OTX2_PRIV_FLAGS_PAM4 BIT(0)
+	"pam4",
+};
+
 struct otx2_stat {
 	char name[ETH_GSTRING_LEN];
 	unsigned int index;
@@ -114,6 +119,12 @@ static void otx2_get_strings(struct net_device *netdev, u32 sset, u8 *data)
 {
 	struct otx2_nic *pfvf = netdev_priv(netdev);
 	int stats;
+
+	if (sset == ETH_SS_PRIV_FLAGS) {
+		memcpy(data, otx2_priv_flags_strings,
+		       ARRAY_SIZE(otx2_priv_flags_strings) * ETH_GSTRING_LEN);
+		return;
+	}
 
 	if (sset != ETH_SS_STATS)
 		return;
@@ -252,6 +263,9 @@ static int otx2_get_sset_count(struct net_device *netdev, int sset)
 {
 	struct otx2_nic *pfvf = netdev_priv(netdev);
 	int qstats_count;
+
+	if (sset == ETH_SS_PRIV_FLAGS)
+		return ARRAY_SIZE(otx2_priv_flags_strings);
 
 	if (sset != ETH_SS_STATS)
 		return -EINVAL;
@@ -1632,7 +1646,7 @@ end:
 	return err;
 }
 
-static const struct ethtool_ops otx2_ethtool_ops = {
+static struct ethtool_ops otx2_ethtool_ops = {
 	.supported_coalesce_params = ETHTOOL_COALESCE_USECS |
 				     ETHTOOL_COALESCE_MAX_FRAMES,
 	.get_link		= otx2_get_link,
