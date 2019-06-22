@@ -1673,8 +1673,10 @@ static void rvu_dbg_nix_init(struct rvu *rvu, int blkaddr)
 			    &rvu_dbg_nix_ndc_rx_hits_miss_fops);
 	debugfs_create_file("qsize", 0600, rvu->rvu_dbg.nix, rvu,
 			    &rvu_dbg_nix_qsize_fops);
-	debugfs_create_file("tx_stall_hwissue", 0600, rvu->rvu_dbg.nix,
-				    rvu, &rvu_dbg_nix_tx_stall_hwissue_fops);
+
+	if (is_rvu_96xx_A0(rvu))
+		debugfs_create_file("tx_stall_hwissue", 0600, rvu->rvu_dbg.nix,
+					    rvu, &rvu_dbg_nix_tx_stall_hwissue_fops);
 }
 
 static void rvu_dbg_npa_init(struct rvu *rvu)
