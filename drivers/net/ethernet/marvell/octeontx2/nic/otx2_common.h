@@ -341,8 +341,6 @@ struct otx2_nic {
 
 	u64			reset_count;
 	struct work_struct	reset_task;
-	u16			rxvlan_entry;
-	bool			rxvlan_alloc;
 
 	bool			entries_alloc;
 	u32			max_flows;
