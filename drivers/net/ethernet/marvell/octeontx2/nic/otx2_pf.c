@@ -28,8 +28,6 @@
 #define DRV_NAME	"rvu_nicpf"
 #define DRV_STRING	"Marvell RVU NIC Physical Function Driver"
 
-#define MAX_ETHTOOL_FLOWS	36
-
 /* Supported devices */
 static const struct pci_device_id otx2_pf_id_table[] = {
 	{ PCI_DEVICE(PCI_VENDOR_ID_CAVIUM, PCI_DEVID_OCTEONTX2_RVU_PF) },
@@ -1808,7 +1806,7 @@ static void otx2_set_rx_mode(struct net_device *netdev)
 	queue_work(pf->otx2_wq, &pf->rx_mode_work);
 }
 
-static void otx2_do_set_rx_mode(struct work_struct *work)
+void otx2_do_set_rx_mode(struct work_struct *work)
 {
 	struct otx2_nic *pf = container_of(work, struct otx2_nic, rx_mode_work);
 	struct net_device *netdev = pf->netdev;
@@ -2511,8 +2509,10 @@ static int otx2_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	if (err)
 		goto err_unreg_netdev;
 
-	INIT_LIST_HEAD(&pf->flows);
-	pf->max_flows = MAX_ETHTOOL_FLOWS;
+	err = otx2_mcam_flow_init(pf);
+	if (err)
+		goto err_unreg_netdev;
+
 	otx2_set_ethtool_ops(netdev);
 
 	/* Enable link notifications */
