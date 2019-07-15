@@ -260,6 +260,9 @@ struct otx2_flow_config {
 #define OTX2_VF_VLAN_RX_INDEX	0
 #define OTX2_VF_VLAN_TX_INDEX	1
 	u32                     ntuple_max_flows;
+#define OTX2_NTUPLE_FILTER_CAPABLE		0
+#define OTX2_UNICAST_FILTER_CAPABLE		1
+	unsigned long           priv_flags;
 	struct list_head	flow_list;
 };
 
@@ -308,6 +311,8 @@ struct otx2_nic {
 	struct workqueue_struct	*otx2_wq;
 	struct work_struct	rx_mode_work;
 	struct otx2_mac_table	*mac_table;
+	struct workqueue_struct	*otx2_ndo_wq;
+	struct work_struct	otx2_rx_mode_work;
 
 	/* Ethtool stuff */
 	u32			msg_enable;
@@ -681,13 +686,13 @@ int otx2_update_rq_stats(struct otx2_nic *pfvf, int qidx);
 int otx2_update_sq_stats(struct otx2_nic *pfvf, int qidx);
 void otx2_set_ethtool_ops(struct net_device *netdev);
 void otx2vf_set_ethtool_ops(struct net_device *netdev);
-int otx2_destroy_ethtool_flows(struct otx2_nic *pfvf);
 
 int otx2_open(struct net_device *netdev);
 int otx2_stop(struct net_device *netdev);
 int otx2_set_real_num_queues(struct net_device *netdev,
 			     int tx_queues, int rx_queues);
 /* MCAM filter related APIs */
+void otx2_do_set_rx_mode(struct work_struct *work);
 int otx2_mcam_flow_init(struct otx2_nic *pf);
 int otx2_alloc_mcam_entries(struct otx2_nic *pfvf);
 void otx2_mcam_flow_del(struct otx2_nic *pf);
@@ -707,4 +712,19 @@ int otx2_add_macfilter(struct net_device *netdev, const u8 *mac);
 int otx2_enable_rxvlan(struct otx2_nic *pf, bool enable);
 int otx2_install_rxvlan_offload_flow(struct otx2_nic *pfvf);
 
+/* OTX2_NIC access priv_flags */
+static inline void otx2_nic_enable_feature(struct otx2_nic *pf,
+					   unsigned long nr) {
+	set_bit(nr, &pf->priv_flags);
+}
+
+static inline void otx2_nic_disable_feature(struct otx2_nic *pf,
+					    unsigned long nr) {
+	clear_bit(nr, &pf->priv_flags);
+}
+
+static inline int otx2_nic_is_feature_enabled(struct otx2_nic *pf,
+					      unsigned long nr) {
+	return test_bit(nr, &pf->priv_flags);
+}
 #endif /* OTX2_COMMON_H */
