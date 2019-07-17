@@ -833,6 +833,9 @@ int otx2_add_macfilter(struct net_device *netdev, const u8 *mac);
 int otx2_enable_rxvlan(struct otx2_nic *pf, bool enable);
 int otx2_install_rxvlan_offload_flow(struct otx2_nic *pfvf);
 u16 otx2_get_max_mtu(struct otx2_nic *pfvf);
+
+int otx2smqvf_probe(struct otx2_nic *vf);
+int otx2smqvf_remove(struct otx2_nic *vf);
 /* OTX2_NIC access priv_flags */
 static inline void otx2_nic_enable_feature(struct otx2_nic *pf,
 					   unsigned long nr) {
