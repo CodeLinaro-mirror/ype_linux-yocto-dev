@@ -1142,13 +1142,7 @@ static void npc_load_mkex_profile(struct rvu *rvu, int blkaddr,
 		/* Compare with mkex mod_param name string */
 		if (mcam_kex->mkex_sign == MKEX_SIGN &&
 		    !strncmp(mcam_kex->name, mkex_profile, MKEX_NAME_LEN)) {
-			/* Due to an errata (35786) in A0/B0 pass silicon,
-			 * parse nibble enable configuration has to be
-			 * identical for both Rx and Tx interfaces.
-			 */
-			if (!is_rvu_96xx_B0(rvu) ||
-			    mcam_kex->keyx_cfg[NIX_INTF_RX] == mcam_kex->keyx_cfg[NIX_INTF_TX])
-				rvu->kpu.mkex = mcam_kex;
+			if (!is_parse_nibble_config_valid(rvu, mcam_kex))
 			goto program_mkex;
 		}
 
