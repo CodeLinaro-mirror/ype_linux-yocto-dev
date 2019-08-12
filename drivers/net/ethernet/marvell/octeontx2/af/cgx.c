@@ -278,7 +278,7 @@ int cgx_lmac_addr_del(u8 cgx_id, u8 lmac_id, u8 index)
 	mac_ops = cgx_dev->mac_ops;
 
 	/* Validate the index */
-	if (index < 0 || index >= lmac->mac_to_index_bmap.max)
+	if (index >= lmac->mac_to_index_bmap.max)
 		return -EINVAL;
 
 	/* Skip deletion for reserved index i.e. index 0 */
