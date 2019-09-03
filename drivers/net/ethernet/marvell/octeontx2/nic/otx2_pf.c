@@ -1661,6 +1661,9 @@ int otx2_open(struct net_device *netdev)
 	/* Restore pause frame settings */
 	otx2_config_pause_frm(pf);
 
+	if (otx2_nic_is_feature_enabled(pf, OTX2_RX_VLAN_OFFLOAD_CAPABLE))
+		otx2_enable_rxvlan(pf, true);
+
 	err = otx2_rxtx_enable(pf, true);
 	if (err)
 		goto err_tx_stop_queues;

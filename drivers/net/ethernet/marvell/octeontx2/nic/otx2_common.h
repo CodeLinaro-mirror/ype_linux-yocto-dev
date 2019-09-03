@@ -278,6 +278,7 @@ struct otx2_flow_config {
 	u32                     ntuple_max_flows;
 #define OTX2_NTUPLE_FILTER_CAPABLE		0
 #define OTX2_UNICAST_FILTER_CAPABLE		1
+#define OTX2_RX_VLAN_OFFLOAD_CAPABLE		2
 	unsigned long           priv_flags;
 	struct list_head	flow_list;
 };
