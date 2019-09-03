@@ -1839,6 +1839,10 @@ static int otx2_set_features(struct net_device *netdev,
 		return otx2_cgx_config_loopback(pf,
 						features & NETIF_F_LOOPBACK);
 
+	if ((changed & NETIF_F_HW_VLAN_CTAG_RX) && netif_running(netdev))
+		return otx2_enable_rxvlan(pf,
+					  features & NETIF_F_HW_VLAN_CTAG_RX);
+
 	if ((changed & NETIF_F_NTUPLE) && !ntuple)
 		otx2_destroy_ntuple_flows(pf);
 
