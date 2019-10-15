@@ -3066,7 +3066,9 @@ int rvu_mbox_handler_nix_set_mac_addr(struct rvu *rvu,
 	if (from_vf && pfvf->pf_set_vf_cfg)
 		return -EPERM;
 
-	ether_addr_copy(pfvf->mac_addr, req->mac_addr);
+	/* Skip updating mac addr if request is from vf */
+	if (!from_vf)
+		ether_addr_copy(pfvf->mac_addr, req->mac_addr);
 
 	rvu_npc_install_ucast_entry(rvu, pcifunc, nixlf,
 				    pfvf->rx_chan_base, req->mac_addr);
