@@ -257,6 +257,8 @@ M(NPC_DELETE_FLOW,	  0x600e, npc_delete_flow,			\
 M(NPC_MCAM_READ_ENTRY,	  0x600f, npc_mcam_read_entry,			\
 				  npc_mcam_read_entry_req,		\
 				  npc_mcam_read_entry_rsp)		\
+M(NPC_SET_PKIND,        0x6010,   npc_set_pkind,                        \
+				  npc_set_pkind, msg_rsp)               \
 M(NPC_MCAM_READ_BASE_RULE, 0x6011, npc_read_base_steer_rule,            \
 				   msg_req, npc_mcam_read_base_rule_rsp)  \
 /* NIX mbox IDs (range 0x8000 - 0xFFFF) */				\
@@ -618,6 +620,18 @@ struct cgx_phy_mod_type {
 	int mod;
 };
 
+struct npc_set_pkind {
+	struct mbox_msghdr hdr;
+#define OTX2_PRIV_FLAGS_DEFAULT  BIT_ULL(0)
+#define OTX2_PRIV_FLAGS_EDSA     BIT_ULL(1)
+#define OTX2_PRIV_FLAGS_HIGIG    BIT_ULL(2)
+#define OTX2_PRIV_FLAGS_CUSTOM   BIT_ULL(63)
+	u64 mode;
+#define PKIND_TX		BIT_ULL(0)
+#define PKIND_RX		BIT_ULL(1)
+	u8 dir;
+	u8 pkind; /* valid only in case custom flag */
+};
 /* NPA mbox message formats */
 
 /* NPA mailbox error codes
