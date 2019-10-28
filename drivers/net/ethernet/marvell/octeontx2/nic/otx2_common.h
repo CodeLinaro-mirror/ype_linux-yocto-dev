@@ -298,6 +298,7 @@ struct otx2_nic {
 	struct dev_hw_ops	*hw_ops;
 	void			*iommu_domain;
 	u16			max_frs;
+	u16			xtra_hdr;
 	u16			rbsize; /* Receive buffer size */
 
 #define OTX2_FLAG_RX_TSTAMP_ENABLED		BIT_ULL(0)
@@ -340,6 +341,22 @@ struct otx2_nic {
 	struct otx2_mac_table	*mac_table;
 	struct workqueue_struct	*otx2_ndo_wq;
 	struct work_struct	otx2_rx_mode_work;
+
+#define OTX2_PRIV_FLAG_PAM4			BIT(0)
+#define OTX2_PRIV_FLAG_EDSA_HDR			BIT(1)
+#define OTX2_PRIV_FLAG_HIGIG2_HDR		BIT(2)
+#define OTX2_IS_EDSA_ENABLED(flags)		((flags) &              \
+						 OTX2_PRIV_FLAG_EDSA_HDR)
+#define OTX2_IS_HIGIG2_ENABLED(flags)		((flags) &              \
+						 OTX2_PRIV_FLAG_HIGIG2_HDR)
+	u32		        ethtool_flags;
+
+	/* extended DSA and EDSA  header lengths are 8/16 bytes
+	 * so take max length 16 bytes here
+	 */
+#define OTX2_EDSA_HDR_LEN			16
+#define OTX2_HIGIG2_HDR_LEN			16
+	u32			addl_mtu;
 
 	/* Ethtool stuff */
 	u32			msg_enable;
@@ -795,6 +812,8 @@ int otx2_open(struct net_device *netdev);
 int otx2_stop(struct net_device *netdev);
 int otx2_set_real_num_queues(struct net_device *netdev,
 			     int tx_queues, int rx_queues);
+int otx2_set_npc_parse_mode(struct otx2_nic *pfvf);
+
 /* MCAM filter related APIs */
 void otx2_do_set_rx_mode(struct work_struct *work);
 int otx2_mcam_flow_init(struct otx2_nic *pf);
