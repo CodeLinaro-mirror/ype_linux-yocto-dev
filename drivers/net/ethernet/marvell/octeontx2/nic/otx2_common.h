@@ -735,19 +735,4 @@ int otx2_add_macfilter(struct net_device *netdev, const u8 *mac);
 int otx2_enable_rxvlan(struct otx2_nic *pf, bool enable);
 int otx2_install_rxvlan_offload_flow(struct otx2_nic *pfvf);
 
-/* OTX2_NIC access priv_flags */
-static inline void otx2_nic_enable_feature(struct otx2_nic *pf,
-					   unsigned long nr) {
-	set_bit(nr, &pf->priv_flags);
-}
-
-static inline void otx2_nic_disable_feature(struct otx2_nic *pf,
-					    unsigned long nr) {
-	clear_bit(nr, &pf->priv_flags);
-}
-
-static inline int otx2_nic_is_feature_enabled(struct otx2_nic *pf,
-					      unsigned long nr) {
-	return test_bit(nr, &pf->priv_flags);
-}
 #endif /* OTX2_COMMON_H */
