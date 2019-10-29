@@ -1014,6 +1014,10 @@ cpt:
 	if (err)
 		goto cgx_err;
 
+	err = rvu_sdp_init(rvu);
+	if (err)
+		goto cgx_err;
+
 	err = rvu_sso_init(rvu);
 	if (err)
 		goto cgx_err;
