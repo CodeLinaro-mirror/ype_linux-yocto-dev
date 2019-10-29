@@ -754,6 +754,10 @@ int npc_get_nixlf_mcam_index(struct npc_mcam *mcam, u16 pcifunc, int nixlf,
 bool is_mcam_entry_enabled(struct rvu *rvu, struct npc_mcam *mcam, int blkaddr,
 			   int index);
 
+/* SDP APIs */
+int rvu_sdp_init(struct rvu *rvu);
+bool is_sdp_pf(u16 pcifunc);
+
 /* CPT APIs */
 int rvu_cpt_register_interrupts(struct rvu *rvu);
 void rvu_cpt_unregister_interrupts(struct rvu *rvu);
