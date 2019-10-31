@@ -176,6 +176,7 @@ M(CGX_GET_PHY_MOD_TYPE, 0x21b, cgx_get_phy_mod_type, msg_req, \
 				cgx_phy_mod_type) \
 M(CGX_SET_PHY_MOD_TYPE, 0x21c, cgx_set_phy_mod_type, cgx_phy_mod_type,	\
 				msg_rsp) \
+M(CGX_STATS_RST,	0x21d, cgx_stats_rst, msg_req, msg_rsp)		\
  /* NPA mbox IDs (range 0x400 - 0x5FF) */				\
 /* NPA mbox IDs (range 0x400 - 0x5FF) */				\
 M(NPA_LF_ALLOC,		0x400, npa_lf_alloc,				\
