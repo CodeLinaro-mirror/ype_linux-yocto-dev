@@ -233,6 +233,9 @@ static void otx2_get_ethtool_stats(struct net_device *netdev,
 		*(data++) = pfvf->hw.cgx_tx_stats[stat];
 	*(data++) = pfvf->reset_count;
 
+	if (pfvf->linfo.fec == OTX2_FEC_NONE)
+		return;
+
 	fec_corr_blks = pfvf->hw.cgx_fec_corr_blks;
 	fec_uncorr_blks = pfvf->hw.cgx_fec_uncorr_blks;
 
@@ -1400,7 +1403,7 @@ static u32 otx2_get_priv_flags(struct net_device *netdev)
 	if (IS_ERR(rsp)) {
 		pfvf->ethtool_flags &= ~OTX2_PRIV_FLAG_PAM4;
 	} else {
-		if (rsp->fwdata.phy.mod_type)
+		if (rsp->fwdata.phy.misc.mod_type)
 			pfvf->ethtool_flags |= OTX2_PRIV_FLAG_PAM4;
 		else
 			pfvf->ethtool_flags &= ~OTX2_PRIV_FLAG_PAM4;
@@ -1421,7 +1424,7 @@ static int otx2_set_phy_mod_type(struct net_device *netdev, bool enable)
 		return -EAGAIN;
 
 	/* ret here if phy does not support this feature */
-	if (!fwd->fwdata.phy.can_change_mod_type)
+	if (!fwd->fwdata.phy.misc.can_change_mod_type)
 		return -EOPNOTSUPP;
 
 	mutex_lock(&pfvf->mbox.lock);
