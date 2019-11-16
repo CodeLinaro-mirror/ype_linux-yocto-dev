@@ -169,4 +169,5 @@ int cgx_set_phy_mod_type(int mod, void *cgxd, int lmac_id);
 int cgx_get_phy_mod_type(void *cgxd, int lmac_id);
 u8 cgx_lmac_get_p2x(int cgx_id, int lmac_id);
 
+int cgx_get_phy_fec_stats(void *cgxd, int lmac_id);
 #endif /* CGX_H */
