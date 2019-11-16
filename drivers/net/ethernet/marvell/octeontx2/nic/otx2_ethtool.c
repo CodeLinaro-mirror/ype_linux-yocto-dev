@@ -24,6 +24,8 @@
 
 #define OTX2_DEFAULT_ACTION	0x1
 
+static struct cgx_fw_data *otx2_get_fwdata(struct otx2_nic *pfvf);
+
 static const char otx2_priv_flags_strings[][ETH_GSTRING_LEN] = {
 	"pam4",
 	"edsa",
