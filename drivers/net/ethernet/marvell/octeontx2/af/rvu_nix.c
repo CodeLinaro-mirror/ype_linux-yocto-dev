@@ -695,10 +695,6 @@ static int rvu_nix_blk_aq_enq_inst(struct rvu *rvu, struct nix_hw *nix_hw,
 		return NIX_AF_ERR_AQ_ENQUEUE;
 	}
 
-	nix_hw =  get_nix_hw(rvu->hw, blkaddr);
-	if (!nix_hw)
-		return -EINVAL;
-
 	pfvf = rvu_get_pfvf(rvu, pcifunc);
 	nixlf = rvu_get_lf(rvu, block, pcifunc, 0);
 
