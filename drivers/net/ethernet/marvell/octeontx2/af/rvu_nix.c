@@ -695,6 +695,10 @@ static int rvu_nix_blk_aq_enq_inst(struct rvu *rvu, struct nix_hw *nix_hw,
 		return NIX_AF_ERR_AQ_ENQUEUE;
 	}
 
+	nix_hw =  get_nix_hw(rvu->hw, blkaddr);
+	if (!nix_hw)
+		return -EINVAL;
+
 	pfvf = rvu_get_pfvf(rvu, pcifunc);
 	nixlf = rvu_get_lf(rvu, block, pcifunc, 0);
 
@@ -3929,18 +3933,18 @@ static int rvu_nix_block_init(struct rvu *rvu, struct nix_hw *nix_hw)
 		if (err)
 			return err;
 
-		hw->nix->tx_credits = kcalloc(cgx_lbk_links,
-					       sizeof(u64), GFP_KERNEL);
-		if (!hw->nix->tx_credits)
+		nix_hw->tx_credits = kcalloc(cgx_lbk_links,
+					     sizeof(u64), GFP_KERNEL);
+		if (!nix_hw->tx_credits)
 			return -ENOMEM;
 
 		/* Initialize CGX/LBK/SDP link credits, min/max pkt lengths */
-		nix_link_config(rvu, blkaddr, hw->nix);
+		nix_link_config(rvu, blkaddr, nix_hw);
 
 		/* Enable Channel backpressure */
 		rvu_write64(rvu, blkaddr, NIX_AF_RX_CFG, BIT_ULL(0));
 
-		err = rvu_nix_fixes_init(rvu, hw->nix, blkaddr);
+		err = rvu_nix_fixes_init(rvu, nix_hw, blkaddr);
 		if (err)
 			return err;
 
@@ -4001,8 +4005,11 @@ static void rvu_nix_block_freemem(struct rvu *rvu, int blkaddr,
 
 	if (is_block_implemented(rvu->hw, blkaddr)) {
 		nix_hw = get_nix_hw(rvu->hw, blkaddr);
-		if (!nix_hw)
+		if (!nix_hw) {
+			dev_err(rvu->dev, "Unable to free %s memory\n",
+				block->name);
 			return;
+		}
 
 		for (lvl = 0; lvl < NIX_TXSCH_LVL_CNT; lvl++) {
 			txsch = &nix_hw->txsch[lvl];
