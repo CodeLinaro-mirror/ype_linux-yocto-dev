@@ -691,6 +691,10 @@ static int rvu_nix_blk_aq_enq_inst(struct rvu *rvu, struct nix_hw *nix_hw,
 		return NIX_AF_ERR_AQ_ENQUEUE;
 	}
 
+	nix_hw =  get_nix_hw(rvu->hw, blkaddr);
+	if (!nix_hw)
+		return -EINVAL;
+
 	pfvf = rvu_get_pfvf(rvu, pcifunc);
 	nixlf = rvu_get_lf(rvu, block, pcifunc, 0);
 
@@ -3835,18 +3839,18 @@ static int rvu_nix_block_init(struct rvu *rvu, struct nix_hw *nix_hw)
 		if (err)
 			return err;
 
-		hw->nix->tx_credits = kcalloc(cgx_lbk_links,
-					       sizeof(u64), GFP_KERNEL);
-		if (!hw->nix->tx_credits)
+		nix_hw->tx_credits = kcalloc(cgx_lbk_links,
+					     sizeof(u64), GFP_KERNEL);
+		if (!nix_hw->tx_credits)
 			return -ENOMEM;
 
 		/* Initialize CGX/LBK/SDP link credits, min/max pkt lengths */
-		nix_link_config(rvu, blkaddr, hw->nix);
+		nix_link_config(rvu, blkaddr, nix_hw);
 
 		/* Enable Channel backpressure */
 		rvu_write64(rvu, blkaddr, NIX_AF_RX_CFG, BIT_ULL(0));
 
-		err = rvu_nix_fixes_init(rvu, hw->nix, blkaddr);
+		err = rvu_nix_fixes_init(rvu, nix_hw, blkaddr);
 		if (err)
 			return err;
 
@@ -3907,8 +3911,11 @@ static void rvu_nix_block_freemem(struct rvu *rvu, int blkaddr,
 
 	if (is_block_implemented(rvu->hw, blkaddr)) {
 		nix_hw = get_nix_hw(rvu->hw, blkaddr);
-		if (!nix_hw)
+		if (!nix_hw) {
+			dev_err(rvu->dev, "Unable to free %s memory\n",
+				block->name);
 			return;
+		}
 
 		for (lvl = 0; lvl < NIX_TXSCH_LVL_CNT; lvl++) {
 			txsch = &nix_hw->txsch[lvl];
@@ -4165,13 +4172,10 @@ int rvu_mbox_handler_nix_set_vlan_tpid(struct rvu *rvu,
 
 static irqreturn_t rvu_nix_af_rvu_intr_handler(int irq, void *rvu_irq)
 {
-	struct rvu *rvu = (struct rvu *)rvu_irq;
-	int blkaddr;
+	struct nix_hw *nix_hw = (struct nix_hw *)rvu_irq;
+	struct rvu *rvu = nix_hw->rvu;
+	int blkaddr = nix_hw->blkaddr;
 	u64 intr;
-
-	blkaddr = rvu_get_blkaddr(rvu, BLKTYPE_NIX, 0);
-	if (blkaddr < 0)
-		return IRQ_NONE;
 
 	intr = rvu_read64(rvu, blkaddr, NIX_AF_RVU_INT);
 
@@ -4185,13 +4189,10 @@ static irqreturn_t rvu_nix_af_rvu_intr_handler(int irq, void *rvu_irq)
 
 static irqreturn_t rvu_nix_af_err_intr_handler(int irq, void *rvu_irq)
 {
-	struct rvu *rvu = (struct rvu *)rvu_irq;
-	int blkaddr;
+	struct nix_hw *nix_hw = (struct nix_hw *)rvu_irq;
+	struct rvu *rvu = nix_hw->rvu;
+	int blkaddr = nix_hw->blkaddr;
 	u64 intr;
-
-	blkaddr = rvu_get_blkaddr(rvu, BLKTYPE_NIX, 0);
-	if (blkaddr < 0)
-		return IRQ_NONE;
 
 	intr = rvu_read64(rvu, blkaddr, NIX_AF_ERR_INT);
 
@@ -4232,13 +4233,10 @@ static irqreturn_t rvu_nix_af_err_intr_handler(int irq, void *rvu_irq)
 
 static irqreturn_t rvu_nix_af_ras_intr_handler(int irq, void *rvu_irq)
 {
-	struct rvu *rvu = (struct rvu *)rvu_irq;
-	int blkaddr;
+	struct nix_hw *nix_hw = (struct nix_hw *)rvu_irq;
+	struct rvu *rvu = nix_hw->rvu;
+	int blkaddr = nix_hw->blkaddr;
 	u64 intr;
-
-	blkaddr = rvu_get_blkaddr(rvu, BLKTYPE_NIX, 0);
-	if (blkaddr < 0)
-		return IRQ_NONE;
 
 	intr = rvu_read64(rvu, blkaddr, NIX_AF_RAS);
 
@@ -4271,8 +4269,9 @@ static irqreturn_t rvu_nix_af_ras_intr_handler(int irq, void *rvu_irq)
 	return IRQ_HANDLED;
 }
 
-static bool rvu_nix_af_request_irq(struct rvu *rvu, int blkaddr, int offset,
-				   const char *name, irq_handler_t fn)
+static bool rvu_nix_af_request_irq(struct rvu *rvu, struct nix_hw *nix_hw,
+				   int offset, const char *name,
+				   irq_handler_t fn)
 {
 	int rc;
 
@@ -4280,7 +4279,7 @@ static bool rvu_nix_af_request_irq(struct rvu *rvu, int blkaddr, int offset,
 	rvu->irq_allocated[offset] = false;
 	sprintf(&rvu->irq_name[offset * NAME_SIZE], name);
 	rc = request_irq(pci_irq_vector(rvu->pdev, offset), fn, 0,
-			 &rvu->irq_name[offset * NAME_SIZE], rvu);
+			 &rvu->irq_name[offset * NAME_SIZE], nix_hw);
 	if (rc)
 		dev_warn(rvu->dev, "Failed to register %s irq\n", name);
 	else
@@ -4289,25 +4288,24 @@ static bool rvu_nix_af_request_irq(struct rvu *rvu, int blkaddr, int offset,
 	return rvu->irq_allocated[offset];
 }
 
-int rvu_nix_register_interrupts(struct rvu *rvu)
+static int rvu_nix_blk_register_interrupts(struct rvu *rvu,
+					   struct nix_hw *nix_hw)
 {
 	int blkaddr, base;
 	bool rc;
 
-	blkaddr = rvu_get_blkaddr(rvu, BLKTYPE_NIX, 0);
-	if (blkaddr < 0)
-		return blkaddr;
+	blkaddr = nix_hw->blkaddr;
 
 	/* Get NIX AF MSIX vectors offset. */
 	base = rvu_read64(rvu, blkaddr, NIX_PRIV_AF_INT_CFG) & 0x3ff;
 	if (!base) {
 		dev_warn(rvu->dev,
-			 "Failed to get NIX_AF_INT vector offsets\n");
+			 "Failed to get NIX%d NIX_AF_INT vector offsets\n",
+			 blkaddr - BLKADDR_NIX0);
 		return 0;
 	}
-
 	/* Register and enable NIX_AF_RVU_INT interrupt */
-	rc = rvu_nix_af_request_irq(rvu, blkaddr, base +  NIX_AF_INT_VEC_RVU,
+	rc = rvu_nix_af_request_irq(rvu, nix_hw, base +  NIX_AF_INT_VEC_RVU,
 				    "NIX_AF_RVU_INT",
 				    rvu_nix_af_rvu_intr_handler);
 	if (!rc)
@@ -4315,7 +4313,7 @@ int rvu_nix_register_interrupts(struct rvu *rvu)
 	rvu_write64(rvu, blkaddr, NIX_AF_RVU_INT_ENA_W1S, ~0ULL);
 
 	/* Register and enable NIX_AF_ERR_INT interrupt */
-	rc = rvu_nix_af_request_irq(rvu, blkaddr, base + NIX_AF_INT_VEC_AF_ERR,
+	rc = rvu_nix_af_request_irq(rvu, nix_hw, base + NIX_AF_INT_VEC_AF_ERR,
 				    "NIX_AF_ERR_INT",
 				    rvu_nix_af_err_intr_handler);
 	if (!rc)
@@ -4323,7 +4321,7 @@ int rvu_nix_register_interrupts(struct rvu *rvu)
 	rvu_write64(rvu, blkaddr, NIX_AF_ERR_INT_ENA_W1S, ~0ULL);
 
 	/* Register and enable NIX_AF_RAS interrupt */
-	rc = rvu_nix_af_request_irq(rvu, blkaddr, base + NIX_AF_INT_VEC_POISON,
+	rc = rvu_nix_af_request_irq(rvu, nix_hw, base + NIX_AF_INT_VEC_POISON,
 				    "NIX_AF_RAS",
 				    rvu_nix_af_ras_intr_handler);
 	if (!rc)
@@ -4333,16 +4331,31 @@ int rvu_nix_register_interrupts(struct rvu *rvu)
 	return 0;
 err:
 	rvu_nix_unregister_interrupts(rvu);
-	return rc;
+	return -1;
 }
 
-void rvu_nix_unregister_interrupts(struct rvu *rvu)
+int rvu_nix_register_interrupts(struct rvu *rvu)
+{
+	struct nix_hw *nix_hw;
+	int blkaddr = 0;
+
+	blkaddr = rvu_get_next_nix_blkaddr(rvu, blkaddr);
+	while (blkaddr) {
+		nix_hw = get_nix_hw(rvu->hw, blkaddr);
+		if (nix_hw)
+			rvu_nix_blk_register_interrupts(rvu, nix_hw);
+		blkaddr = rvu_get_next_nix_blkaddr(rvu, blkaddr);
+	}
+
+	return 0;
+}
+
+static void rvu_nix_blk_unregister_interrupts(struct rvu *rvu,
+					      struct nix_hw *nix_hw)
 {
 	int blkaddr, offs, i;
 
-	blkaddr = rvu_get_blkaddr(rvu, BLKTYPE_NIX, 0);
-	if (blkaddr < 0)
-		return;
+	blkaddr = nix_hw->blkaddr;
 
 	offs = rvu_read64(rvu, blkaddr, NIX_PRIV_AF_INT_CFG) & 0x3ff;
 	if (!offs)
@@ -4363,6 +4376,19 @@ void rvu_nix_unregister_interrupts(struct rvu *rvu)
 			free_irq(pci_irq_vector(rvu->pdev, offs + i), rvu);
 			rvu->irq_allocated[offs + i] = false;
 		}
+}
+
+void rvu_nix_unregister_interrupts(struct rvu *rvu)
+{
+	struct nix_hw *nix_hw;
+	int blkaddr = 0;
+
+	blkaddr = rvu_get_next_nix_blkaddr(rvu, blkaddr);
+	while (blkaddr) {
+		nix_hw = get_nix_hw(rvu->hw, blkaddr);
+		rvu_nix_blk_unregister_interrupts(rvu, nix_hw);
+		blkaddr = rvu_get_next_nix_blkaddr(rvu, blkaddr);
+	}
 }
 
 int rvu_mbox_handler_nix_inline_ipsec_cfg(struct rvu *rvu,
