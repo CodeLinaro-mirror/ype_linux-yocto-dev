@@ -1410,7 +1410,7 @@ static void rvu_dbg_nix_init(struct rvu *rvu, int blkaddr)
 
 	if (is_rvu_96xx_A0(rvu)) 
 		debugfs_create_file("tx_stall_hwissue", 0600, rvu->rvu_dbg.nix,
-					    rvu, &rvu_dbg_nix_tx_stall_hwissue_fops);
+					    nix_hw, &rvu_dbg_nix_tx_stall_hwissue_fops);
 }
 
 static void rvu_dbg_npa_init(struct rvu *rvu)
@@ -2858,7 +2858,6 @@ void rvu_dbg_init(struct rvu *rvu)
 
 	rvu_dbg_npa_init(rvu);
 	rvu_dbg_nix_init(rvu, BLKADDR_NIX0);
-
 	rvu_dbg_nix_init(rvu, BLKADDR_NIX1);
 	rvu_dbg_cgx_init(rvu);
 	rvu_dbg_npc_init(rvu);
