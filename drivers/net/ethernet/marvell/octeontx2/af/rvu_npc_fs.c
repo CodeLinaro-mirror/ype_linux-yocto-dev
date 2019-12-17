@@ -1120,9 +1120,9 @@ int rvu_mbox_handler_npc_install_flow(struct rvu *rvu,
 				      struct npc_install_flow_rsp *rsp)
 {
 	bool from_vf = !!(req->hdr.pcifunc & RVU_PFVF_FUNC_MASK);
+	bool pf_set_vfs_mac = false;
 	int blkaddr, nixlf, err;
 	struct rvu_pfvf *pfvf;
-	bool pf_set_vfs_mac = false;
 	bool enable = true;
 	u16 target;
 
