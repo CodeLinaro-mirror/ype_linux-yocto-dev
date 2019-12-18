@@ -327,9 +327,6 @@ static void nix_interface_deinit(struct rvu *rvu, u16 pcifunc, u8 nixlf)
 			pcifunc);
 	}
 
-	/* Free any tx vtag def entries used by this NIX LF */
-	nix_free_tx_vtag_entries(rvu, pcifunc);
-
 	/* Disable DMAC filters used */
 	rvu_cgx_disable_dmac_entries(rvu, pcifunc);
 }
