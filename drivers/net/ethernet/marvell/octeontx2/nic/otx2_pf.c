@@ -1348,7 +1348,7 @@ static int otx2_get_rbuf_size(struct otx2_nic *pf, int mtu)
 	 * memory = frame_size + (headroom + struct skb_shared_info size) * 6;
 	 * each receive buffer size = memory / 6;
 	 */
-	frame_size = mtu + OTX2_ETH_HLEN + OTX2_HW_TIMESTAMP_LEN;
+	frame_size = mtu + OTX2_ETH_HLEN + OTX2_HW_TIMESTAMP_LEN + pf->addl_mtu + pf->xtra_hdr;
 	total_size = frame_size + (OTX2_HEAD_ROOM +
 		     OTX2_DATA_ALIGN(sizeof(struct skb_shared_info))) * 6;
 	rbuf_size = total_size / 6;
