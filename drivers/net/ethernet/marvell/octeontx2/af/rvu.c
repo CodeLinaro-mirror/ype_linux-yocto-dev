@@ -1166,17 +1166,18 @@ u16 rvu_get_rsrc_mapcount(struct rvu_pfvf *pfvf, int blkaddr)
 	case BLKADDR_NIX1:
 		return pfvf->nixlf ? 1 : 0;
 	case BLKADDR_SSO:
-		return pfvf->sso;
+		return !!pfvf->sso;
 	case BLKADDR_SSOW:
-		return pfvf->ssow;
+		return !!pfvf->ssow;
 	case BLKADDR_TIM:
-		return pfvf->timlfs;
+		return !!pfvf->timlfs;
 	case BLKADDR_CPT0:
 		return pfvf->cptlfs;
 	case BLKADDR_CPT1:
 		return pfvf->cpt1_lfs;
 	}
-	return 0;
+
+	return false;
 }
 
 /* Return true if LFs of block type are attached to pcifunc */
