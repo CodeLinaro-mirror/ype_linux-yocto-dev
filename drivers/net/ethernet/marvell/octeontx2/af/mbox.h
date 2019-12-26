@@ -377,6 +377,8 @@ struct rsrc_attach {
 	u16  timlfs;
 	u16  cptlfs;
 	int  cpt_blkaddr; /* BLKADDR_CPT0/BLKADDR_CPT1 or 0 for BLKADDR_CPT0 */
+	u16  reelfs;
+	int  ree_blkaddr; /* BLKADDR_REE0/BLKADDR_REE1 or 0 for BLKADDR_REE0 */
 };
 
 /* Structure for relinquishing resources.
@@ -393,6 +395,7 @@ struct rsrc_detach {
 	u8 ssow:1;
 	u8 timlfs:1;
 	u8 cptlfs:1;
+	u8 reelfs:1;
 };
 
 /*
@@ -408,6 +411,11 @@ struct free_rsrcs_rsp {
 	u16  cpt;
 	u8   npa;
 	u8   nix;
+	u16  schq_nix1[NIX_TXSCH_LVL_CNT];
+	u8   nix1;
+	u8   cpt1;
+	u8   ree0;
+	u8   ree1;
 };
 
 #define MSIX_VECTOR_INVALID	0xFFFF
@@ -427,6 +435,10 @@ struct msix_offset_rsp {
 	u16  cptlf_msixoff[MAX_RVU_BLKLF_CNT];
 	u8   cpt1_lfs;
 	u16  cpt1_lf_msixoff[MAX_RVU_BLKLF_CNT];
+	u8   ree0_lfs;
+	u8   ree1_lfs;
+	u16  ree0_lf_msixoff[MAX_RVU_BLKLF_CNT];
+	u16  ree1_lf_msixoff[MAX_RVU_BLKLF_CNT];
 };
 
 struct get_hw_cap_rsp {

@@ -1398,7 +1398,9 @@ static int rvu_detach_rsrcs(struct rvu *rvu, struct rsrc_detach *detach,
 				continue;
 			else if ((blkid == BLKADDR_CPT0) && !detach->cptlfs)
 				continue;
-			else if ((blkid == BLKADDR_CPT1) && !detach->cptlfs)
+			else if ((blkid == BLKADDR_REE0) && !detach->reelfs)
+				continue;
+			else if ((blkid == BLKADDR_REE1) && !detach->reelfs)
 				continue;
 		}
 		rvu_detach_block(rvu, pcifunc, block->type);
@@ -1468,6 +1470,12 @@ static int rvu_get_attach_blkaddr(struct rvu *rvu, int blktype,
 		blkaddr = attach->cpt_blkaddr ? attach->cpt_blkaddr :
 			  BLKADDR_CPT0;
 		if (blkaddr != BLKADDR_CPT0 && blkaddr != BLKADDR_CPT1)
+			return -ENODEV;
+		break;
+	case BLKTYPE_REE:
+		blkaddr = attach->ree_blkaddr ? attach->ree_blkaddr :
+			  BLKADDR_REE0;
+		if (blkaddr != BLKADDR_REE0 && blkaddr != BLKADDR_REE1)
 			return -ENODEV;
 		break;
 	default:
@@ -1628,6 +1636,25 @@ static int rvu_check_rsrc_availability(struct rvu *rvu,
 			goto fail;
 	}
 
+	if (req->hdr.ver >= RVU_MULTI_BLK_VER && req->reelfs) {
+		blkaddr = rvu_get_attach_blkaddr(rvu, BLKTYPE_REE,
+						 pcifunc, req);
+		if (blkaddr < 0)
+			return blkaddr;
+		block = &hw->block[blkaddr];
+		if (req->reelfs > block->lf.max) {
+			dev_err(&rvu->pdev->dev,
+				"Func 0x%x: Invalid REELF req, %d > max %d\n",
+				 pcifunc, req->cptlfs, block->lf.max);
+			return -EINVAL;
+		}
+		mappedlfs = rvu_get_rsrc_mapcount(pfvf, block->addr);
+		free_lfs = rvu_rsrc_free_count(&block->lf);
+		if (req->reelfs > mappedlfs &&
+		    ((req->reelfs - mappedlfs) > free_lfs))
+			goto fail;
+	}
+
 	return 0;
 
 fail:
@@ -1708,6 +1735,14 @@ int rvu_mbox_handler_attach_resources(struct rvu *rvu,
 			rvu_detach_block(rvu, pcifunc, BLKTYPE_CPT);
 		rvu_attach_block(rvu, pcifunc, BLKTYPE_CPT,
 				 attach->cptlfs, attach);
+	}
+
+	if (attach->hdr.ver >= RVU_MULTI_BLK_VER && attach->reelfs) {
+		if (attach->modify &&
+		    rvu_attach_from_same_block(rvu, BLKTYPE_REE, attach))
+			rvu_detach_block(rvu, pcifunc, BLKTYPE_REE);
+		rvu_attach_block(rvu, pcifunc, BLKTYPE_REE,
+				 attach->reelfs, attach);
 	}
 
 exit:
@@ -1837,6 +1872,20 @@ int rvu_mbox_handler_msix_offset(struct rvu *rvu, struct msg_req *req,
 		lf = rvu_get_lf(rvu, &hw->block[BLKADDR_CPT1], pcifunc, slot);
 		rsp->cpt1_lf_msixoff[slot] =
 			rvu_get_msix_offset(rvu, pfvf, BLKADDR_CPT1, lf);
+	}
+
+	rsp->ree0_lfs = pfvf->ree0_lfs;
+	for (slot = 0; slot < rsp->ree0_lfs; slot++) {
+		lf = rvu_get_lf(rvu, &hw->block[BLKADDR_REE0], pcifunc, slot);
+		rsp->ree0_lf_msixoff[slot] =
+			rvu_get_msix_offset(rvu, pfvf, BLKADDR_REE0, lf);
+	}
+
+	rsp->ree1_lfs = pfvf->ree1_lfs;
+	for (slot = 0; slot < rsp->ree1_lfs; slot++) {
+		lf = rvu_get_lf(rvu, &hw->block[BLKADDR_REE1], pcifunc, slot);
+		rsp->ree1_lf_msixoff[slot] =
+			rvu_get_msix_offset(rvu, pfvf, BLKADDR_REE1, lf);
 	}
 
 	return 0;
