@@ -440,7 +440,7 @@ int rvu_mbox_handler_cpt_inline_ipsec_cfg(struct rvu *rvu,
 
 	block = &rvu->hw->block[blkaddr];
 	num_lfs = rvu_get_rsrc_mapcount(rvu_get_pfvf(rvu, pcifunc),
-					block->type);
+					block->addr);
 	if (req->slot >= num_lfs)
 		return CPT_AF_ERR_LF_INVALID;
 
@@ -532,7 +532,7 @@ int rvu_mbox_handler_cpt_rd_wr_register(struct rvu *rvu,
 {
 	int blkaddr;
 
-	blkaddr = rvu_get_blkaddr(rvu, BLKTYPE_CPT, 0);
+	blkaddr = rvu_get_blkaddr(rvu, BLKTYPE_CPT, req->hdr.pcifunc);
 	if (blkaddr < 0)
 		return blkaddr;
 
