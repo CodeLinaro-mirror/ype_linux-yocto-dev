@@ -740,6 +740,7 @@ int otx2smqvf_remove(struct otx2_nic *vf);
 int otx2_del_macfilter(struct net_device *netdev, const u8 *mac);
 int otx2_add_macfilter(struct net_device *netdev, const u8 *mac);
 int otx2_enable_rxvlan(struct otx2_nic *pf, bool enable);
+int otx2_enable_vf_vlan(struct otx2_nic *pf);
 int otx2_install_rxvlan_offload_flow(struct otx2_nic *pfvf);
 
 #endif /* OTX2_COMMON_H */
