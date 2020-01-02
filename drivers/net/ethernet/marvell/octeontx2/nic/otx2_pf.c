@@ -1443,6 +1443,8 @@ err_free_nix_lf:
 	free_req = otx2_mbox_alloc_msg_nix_lf_free(mbox);
 	if (free_req) {
 		free_req->flags = NIX_LF_DISABLE_FLOWS;
+		if (!(pf->flags & OTX2_FLAG_PF_SHUTDOWN))
+			free_req->flags |= NIX_LF_DONT_FREE_TX_VTAG;
 		if (otx2_sync_mbox_msg(mbox))
 			dev_err(pf->dev, "%s failed to free nixlf\n", __func__);
 	}
@@ -1676,6 +1678,15 @@ int otx2_open(struct net_device *netdev)
 	/* we have already received link status notification */
 	if (pf->linfo.link_up && !(pf->pcifunc & RVU_PFVF_FUNC_MASK))
 		otx2_handle_link_event(pf);
+
+	if ((pf->flags & OTX2_FLAG_RX_VLAN_SUPPORT) ||
+	    (pf->flags & OTX2_FLAG_VF_VLAN_SUPPORT)) {
+		if (!(pf->flags & OTX2_FLAG_MCAM_ENTRIES_ALLOC)) {
+			err = otx2_alloc_mcam_entries(pf);
+			if (err)
+				goto err_free_cints;
+		}
+	}
 
 	/* Restore pause frame settings */
 	otx2_config_pause_frm(pf);
@@ -2046,7 +2057,10 @@ static int otx2_ioctl(struct net_device *netdev, struct ifreq *req, int cmd)
 
 static int otx2_do_set_vf_mac(struct otx2_nic *pf, int vf, const u8 *mac)
 {
+	struct otx2_flow_config *flow_cfg = pf->flow_cfg;
 	struct npc_install_flow_req *req;
+	struct otx2_vf_config *config;
+	u32 idx;
 	int err;
 
 	mutex_lock(&pf->mbox.lock);
