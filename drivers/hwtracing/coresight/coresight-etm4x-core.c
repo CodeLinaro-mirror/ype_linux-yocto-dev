@@ -836,6 +836,15 @@ static bool etm4_init_iomem_access(struct etmv4_drvdata *drvdata,
 	u32 idr1 = readl_relaxed(drvdata->base + TRCIDR1);
 
 	/*
+	 * OcteonTx2 h/w reports ETMv4.2 but it supports Ignore Packet
+	 * feature of ETMv4.3, Treat this h/w as ETMv4.3 compatible.
+	 */
+	if (drvdata->etm_options & CSETM_QUIRK_TREAT_ETMv43) {
+		idr1 &= ~0xF0;
+		idr1 |= 0x30;
+	}
+
+	/*
 	 * All ETMs must implement TRCDEVARCH to indicate that
 	 * the component is an ETMv4. To support any broken
 	 * implementations we fall back to TRCIDR1 check, which
@@ -1814,6 +1823,9 @@ static int etm4_probe(struct device *dev, void __iomem *base, u32 etm_pid)
 		return PTR_ERR(pdata);
 
 	dev->platform_data = pdata;
+
+	/* Enable fixes for Silicon issues */
+	drvdata->etm_options = coresight_get_etm_quirks(OCTEONTX_CN9XXX_ETM);
 
 	desc.type = CORESIGHT_DEV_TYPE_SOURCE;
 	desc.subtype.source_subtype = CORESIGHT_DEV_SUBTYPE_SOURCE_PROC;
