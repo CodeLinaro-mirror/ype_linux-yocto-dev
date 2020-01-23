@@ -876,6 +876,7 @@ struct etmv4_drvdata {
 	local_t				mode;
 	u32				etm_options;
 	int				cpu;
+	int				rc_cpu;
 	u8				arch;
 	u8				nr_pe;
 	u8				nr_pe_cmp;

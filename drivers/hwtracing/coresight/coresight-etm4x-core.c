@@ -174,6 +174,43 @@ struct etm4_enable_arg {
 	int rc;
 };
 
+/* Raw enable/disable APIs for ETM sync insertion */
+
+static void etm4_enable_raw(struct coresight_device *csdev)
+{
+	struct etmv4_drvdata *drvdata = dev_get_drvdata(csdev->dev.parent);
+
+	CS_UNLOCK(drvdata->base);
+
+	etm4_os_unlock(drvdata);
+
+	/* Enable the trace unit */
+	writel(1, drvdata->base + TRCPRGCTLR);
+
+	dsb(sy);
+	isb();
+
+	CS_LOCK(drvdata->base);
+}
+
+static void etm4_disable_raw(struct coresight_device *csdev)
+{
+	struct etmv4_drvdata *drvdata = dev_get_drvdata(csdev->dev.parent);
+
+	CS_UNLOCK(drvdata->base);
+	/*
+	 * Make sure everything completes before disabling, as recommended
+	 * by section 7.3.77 ("TRCVICTLR, ViewInst Main Control Register,
+	 * SSTATUS") of ARM IHI 0064D
+	 */
+	dsb(sy);
+	isb();
+
+	writel_relaxed(0x0, drvdata->base + TRCPRGCTLR);
+
+	CS_LOCK(drvdata->base);
+}
+
 #ifdef CONFIG_ETM4X_IMPDEF_FEATURE
 
 #define HISI_HIP08_AMBA_ID		0x000b6d01
@@ -393,6 +430,20 @@ static int etm4_enable_hw(struct etmv4_drvdata *drvdata)
 done:
 	etm4_cs_lock(drvdata, csa);
 
+	/* For supporting SW sync insertion */
+	if (!is_etm_sync_mode_hw()) {
+		/* ETM sync insertions are gated in the
+		 * ETR timer handler based on hw state.
+		 */
+		drvdata->csdev->hw_state = USR_START;
+
+		/* Global timer handler not being associated with
+		 * a specific ETM core, need to know the current
+		 * list of active ETMs.
+		 */
+		coresight_etm_active_enable(drvdata->cpu);
+	}
+
 	dev_dbg(etm_dev, "cpu: %d enable smp call done: %d\n",
 		drvdata->cpu, rc);
 	return rc;
@@ -605,9 +656,16 @@ static int etm4_enable_sysfs(struct coresight_device *csdev)
 	/*
 	 * Executing etm4_enable_hw on the cpu whose ETM is being enabled
 	 * ensures that register writes occur when cpu is powered.
+	 *
+	 * Note: When task isolation is enabled, the target cpu used
+	 * is always primary core and hence the above assumption of
+	 * cpu associated with the ETM being in powered up state during
+	 * register writes is not valid.
+	 * But on the other hand, using smp call ensures that atomicity is
+	 * not broken as well.
 	 */
 	arg.drvdata = drvdata;
-	ret = smp_call_function_single(drvdata->cpu,
+	ret = smp_call_function_single(drvdata->rc_cpu,
 				       etm4_enable_hw_smp_call, &arg, 1);
 	if (!ret)
 		ret = arg.rc;
@@ -705,6 +763,12 @@ static void etm4_disable_hw(void *info)
 	coresight_disclaim_device_unlocked(csdev);
 	etm4_cs_lock(drvdata, csa);
 
+	/* For supporting SW sync insertion */
+	if (!is_etm_sync_mode_hw()) {
+		drvdata->csdev->hw_state = USR_STOP;
+		coresight_etm_active_disable(drvdata->cpu);
+	}
+
 	dev_dbg(&drvdata->csdev->dev,
 		"cpu: %d disable smp call done\n", drvdata->cpu);
 }
@@ -750,8 +814,15 @@ static void etm4_disable_sysfs(struct coresight_device *csdev)
 	/*
 	 * Executing etm4_disable_hw on the cpu whose ETM is being disabled
 	 * ensures that register writes occur when cpu is powered.
+	 *
+	 * Note: When task isolation is enabled, the target cpu used
+	 * is always primary core and hence the above assumption of
+	 * cpu associated with the ETM being in powered up state during
+	 * register writes is not valid.
+	 * But on the other hand, using smp call ensures that atomicity is
+	 * not broken as well.
 	 */
-	smp_call_function_single(drvdata->cpu, etm4_disable_hw, drvdata, 1);
+	smp_call_function_single(drvdata->rc_cpu, etm4_disable_hw, drvdata, 1);
 
 	spin_unlock(&drvdata->spinlock);
 	cpus_read_unlock();
@@ -792,6 +863,8 @@ static const struct coresight_ops_source etm4_source_ops = {
 	.trace_id	= etm4_trace_id,
 	.enable		= etm4_enable,
 	.disable	= etm4_disable,
+	.enable_raw	= etm4_enable_raw,
+	.disable_raw	= etm4_disable_raw,
 };
 
 static const struct coresight_ops etm4_cs_ops = {
@@ -1803,7 +1876,11 @@ static int etm4_probe(struct device *dev, void __iomem *base, u32 etm_pid)
 	init_arg.csa = &desc.access;
 	init_arg.pid = etm_pid;
 
-	if (smp_call_function_single(drvdata->cpu,
+	/* Update the smp target cpu */
+	drvdata->rc_cpu = is_etm_sync_mode_sw_global() ? SYNC_GLOBAL_CORE :
+		drvdata->cpu;
+
+	if (smp_call_function_single(drvdata->rc_cpu,
 				etm4_init_arch_data,  &init_arg, 1))
 		dev_err(dev, "ETM arch init failed\n");
 
