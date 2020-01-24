@@ -1047,22 +1047,6 @@ cpt:
 	if (err)
 		goto cgx_err;
 
-	err = rvu_sdp_init(rvu);
-	if (err)
-		goto cgx_err;
-
-	err = rvu_sso_init(rvu);
-	if (err)
-		goto cgx_err;
-
-	err = rvu_tim_init(rvu);
-	if (err)
-		goto cgx_err;
-
-	err = rvu_cpt_init(rvu);
-	if (err)
-		goto cgx_err;
-
 	/* Assign MACs for CGX mapped functions */
 	rvu_setup_pfvf_macaddress(rvu);
 
@@ -1076,10 +1060,28 @@ cpt:
 	if (err)
 		goto nix_err;
 
+	err = rvu_sso_init(rvu);
+	if (err)
+		goto sso_err;
+
+	err = rvu_tim_init(rvu);
+	if (err)
+		goto sso_err;
+
+	err = rvu_cpt_init(rvu);
+	if (err)
+		goto sso_err;
+
+	err = rvu_sdp_init(rvu);
+	if (err)
+		goto sso_err;
+
 	rvu_program_channels(rvu);
 
 	return 0;
 
+sso_err:
+	rvu_sso_freemem(rvu);
 nix_err:
 	rvu_nix_freemem(rvu);
 npa_err:
