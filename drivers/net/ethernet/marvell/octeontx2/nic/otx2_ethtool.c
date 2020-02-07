@@ -953,7 +953,8 @@ static int otx2_set_rxfh_context(struct net_device *dev, const u32 *indir,
 		for (idx = 0; idx < rss->rss_size; idx++)
 			rss_ctx->ind_tbl[idx] = indir[idx];
 	}
-	otx2_set_rss_table(pfvf, *rss_context);
+	if (netif_running(dev))
+		otx2_set_rss_table(pfvf, *rss_context);
 
 	return 0;
 }
