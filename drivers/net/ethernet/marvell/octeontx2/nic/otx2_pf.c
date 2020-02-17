@@ -2055,10 +2055,7 @@ static int otx2_ioctl(struct net_device *netdev, struct ifreq *req, int cmd)
 
 static int otx2_do_set_vf_mac(struct otx2_nic *pf, int vf, const u8 *mac)
 {
-	struct otx2_flow_config *flow_cfg = pf->flow_cfg;
 	struct npc_install_flow_req *req;
-	struct otx2_vf_config *config;
-	u32 idx;
 	int err;
 
 	mutex_lock(&pf->mbox.lock);
@@ -2572,6 +2569,9 @@ static int otx2_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	/* Enable pause frames by default */
 	pf->flags |= OTX2_FLAG_RX_PAUSE_ENABLED;
 	pf->flags |= OTX2_FLAG_TX_PAUSE_ENABLED;
+
+	/* Set interface mode as Default */
+	pf->ethtool_flags |= OTX2_PRIV_FLAG_DEF_MODE;
 
 	return 0;
 
