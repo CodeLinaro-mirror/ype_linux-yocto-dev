@@ -799,4 +799,6 @@ int rvu_tim_lookup_rsrc(struct rvu *rvu, struct rvu_block *block,
 			u16 pcifunc, int slot);
 bool is_parse_nibble_config_valid(struct rvu *rvu,
 				  struct npc_mcam_kex *mcam_kex);
+int rvu_npc_set_parse_mode(struct rvu *rvu, u16 pcifunc, u64 mode, u8 dir,
+			   u64 pkind);
 #endif /* RVU_H */
