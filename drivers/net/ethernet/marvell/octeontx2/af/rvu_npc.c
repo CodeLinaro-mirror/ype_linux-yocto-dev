@@ -2912,7 +2912,7 @@ int rvu_npc_set_parse_mode(struct rvu *rvu, u16 pcifunc, u64 mode, u8 dir,
 		/* rx pkind set req valid only for cgx mapped PFs */
 		if (!is_cgx_config_permitted(rvu, pcifunc))
 			return 0;
-		rvu_get_cgx_lmac_id(pfvf->cgx_lmac, &cgx_id, &lmac_id);
+		rvu_get_cgx_lmac_id(rvu->pf2cgxlmac_map[pf], &cgx_id, &lmac_id);
 
 		rc = cgx_set_pkind(rvu_cgx_pdata(cgx_id, rvu),
 				   lmac_id, rxpkind);
