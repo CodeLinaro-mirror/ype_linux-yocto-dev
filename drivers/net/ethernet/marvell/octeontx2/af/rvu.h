@@ -321,6 +321,7 @@ struct nix_hw {
 	struct nix_lso lso;
 	void   *tx_stall;
 	struct nix_txvlan txvlan;
+	u64    *tx_credits;
 };
 
 /* RVU block's capabilities or functionality,
