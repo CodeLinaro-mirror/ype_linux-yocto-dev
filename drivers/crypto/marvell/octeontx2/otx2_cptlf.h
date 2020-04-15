@@ -350,5 +350,8 @@ int otx2_cptlf_register_interrupts(struct otx2_cptlfs_info *lfs);
 void otx2_cptlf_unregister_interrupts(struct otx2_cptlfs_info *lfs);
 void otx2_cptlf_free_irqs_affinity(struct otx2_cptlfs_info *lfs);
 int otx2_cptlf_set_irqs_affinity(struct otx2_cptlfs_info *lfs);
+int otx2_cptvf_lf_init(struct pci_dev *pdev, void *reg_base,
+		       struct otx2_cptlfs_info *lfs, int lfs_num);
+int otx2_cptvf_lf_shutdown(struct pci_dev *pdev, struct otx2_cptlfs_info *lfs);
 
 #endif /* __OTX2_CPTLF_H */
