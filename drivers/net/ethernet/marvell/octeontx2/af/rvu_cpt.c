@@ -12,15 +12,6 @@
 #define	PCI_DEVID_OTX2_CPT_PF	0xA0FD
 #define	PCI_DEVID_OTX2_CPT10K_PF 0xA0F2
 
-/* Maximum supported microcode groups */
-#define CPT_MAX_ENGINE_GROUPS	8
-
-/* Invalid engine group */
-#define INVALID_ENGINE_GRP	0xFF
-
-/* Number of engine group for symmetric crypto */
-static int crypto_eng_grp = INVALID_ENGINE_GRP;
-
 /* Fault interrupts names */
 static const char *cpt_flt_irq_name[2] = { "CPTAF FLT0", "CPTAF FLT1" };
 
@@ -523,24 +514,6 @@ static bool is_valid_offset(struct rvu *rvu, struct cpt_rd_wr_reg_msg *req)
 		return true;
 	}
 	return false;
-}
-
-int rvu_mbox_handler_cpt_set_crypto_grp(struct rvu *rvu,
-					struct cpt_set_crypto_grp_req_msg *req,
-					struct cpt_set_crypto_grp_req_msg *rsp)
-{
-	/* This message is accepted only if sent from CPT PF */
-	if (!is_cpt_pf(rvu, req->hdr.pcifunc))
-		return CPT_AF_ERR_ACCESS_DENIED;
-
-	rsp->crypto_eng_grp = req->crypto_eng_grp;
-
-	if (req->crypto_eng_grp != INVALID_ENGINE_GRP &&
-	    req->crypto_eng_grp >= CPT_MAX_ENGINE_GROUPS)
-		return CPT_AF_ERR_GRP_INVALID;
-
-	crypto_eng_grp = req->crypto_eng_grp;
-	return 0;
 }
 
 int rvu_mbox_handler_cpt_rd_wr_register(struct rvu *rvu,
