@@ -226,6 +226,12 @@ struct otx2_hw {
 	u64			*nix_lmt_base;
 };
 
+struct vfvlan {
+	u16 vlan;
+	u16 proto;
+	u8 qos;
+};
+
 struct otx2_vf_config {
 	struct otx2_nic *pf;
 	struct delayed_work link_event_work;
@@ -234,6 +240,7 @@ struct otx2_vf_config {
 	u8 mac[ETH_ALEN];
 	u16 vlan;
 	int tx_vtag_idx;
+	struct vfvlan rule;
 };
 
 struct flr_work {
@@ -376,7 +383,9 @@ struct otx2_nic {
 #define OTX2_PRIV_FLAG_PAM4			BIT(0)
 #define OTX2_PRIV_FLAG_EDSA_HDR			BIT(1)
 #define OTX2_PRIV_FLAG_HIGIG2_HDR		BIT(2)
-#define OTX2_PRIV_FLAG_DEF_MODE			BIT(3)
+#define OTX2_PRIV_FLAG_FDSA_HDR			BIT(3)
+#define OTX2_INTF_MOD_MASK			GENMASK(3, 1)
+#define OTX2_PRIV_FLAG_DEF_MODE			BIT(4)
 #define OTX2_IS_EDSA_ENABLED(flags)		((flags) &              \
 						 OTX2_PRIV_FLAG_EDSA_HDR)
 #define OTX2_IS_HIGIG2_ENABLED(flags)		((flags) &              \
@@ -390,6 +399,7 @@ struct otx2_nic {
 	 */
 #define OTX2_EDSA_HDR_LEN			16
 #define OTX2_HIGIG2_HDR_LEN			16
+#define OTX2_FDSA_HDR_LEN			4
 	u32			addl_mtu;
 };
 
@@ -848,14 +858,19 @@ int otx2_get_all_flows(struct otx2_nic *pfvf,
 int otx2_add_flow(struct otx2_nic *pfvf,
 		  struct ethtool_rxnfc *nfc);
 int otx2_remove_flow(struct otx2_nic *pfvf, u32 location);
+void otx2_prepare_fdsa_flow_request(struct npc_install_flow_req *req,
+					   bool is_vlan);
 int otx2_prepare_flow_request(struct ethtool_rx_flow_spec *fsp,
-			      struct npc_install_flow_req *req);
+			      struct npc_install_flow_req *req,
+			      struct otx2_nic *pfvf);
 void otx2_rss_ctx_flow_del(struct otx2_nic *pfvf, int ctx_id);
 int otx2_del_macfilter(struct net_device *netdev, const u8 *mac);
 int otx2_add_macfilter(struct net_device *netdev, const u8 *mac);
 int otx2_enable_rxvlan(struct otx2_nic *pf, bool enable);
 int otx2_enable_vf_vlan(struct otx2_nic *pf);
 int otx2_install_rxvlan_offload_flow(struct otx2_nic *pfvf);
+int otx2_do_set_vf_vlan(struct otx2_nic *pf, int vf, u16 vlan, u8 qos,
+			__be16 proto);
 u16 otx2_get_max_mtu(struct otx2_nic *pfvf);
 
 int otx2smqvf_probe(struct otx2_nic *vf);
