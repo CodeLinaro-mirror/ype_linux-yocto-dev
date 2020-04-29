@@ -152,6 +152,13 @@ enum npc_pkind_type {
 	NPC_TX_DEF_PKIND = 63ULL,	/* NIX-TX PKIND */
 };
 
+enum npc_interface_type {
+	NPC_INTF_MODE_DEF,
+	NPC_INTF_MODE_EDSA,
+	NPC_INTF_MODE_HIGIG,
+	NPC_INTF_MODE_FDSA,
+};
+
 /* list of known and supported fields in packet header and
  * fields present in key structure.
  */
@@ -174,6 +181,7 @@ enum key_fields {
 	NPC_DPORT_TCP,
 	NPC_SPORT_UDP,
 	NPC_DPORT_UDP,
+	NPC_FDSA_VAL,
 	NPC_SPORT_SCTP,
 	NPC_DPORT_SCTP,
 	NPC_HEADER_FIELDS_MAX,
