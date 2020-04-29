@@ -178,6 +178,7 @@ enum key_fields {
 	NPC_DPORT_TCP,
 	NPC_SPORT_UDP,
 	NPC_DPORT_UDP,
+	NPC_FDSA_VAL,
 	NPC_SPORT_SCTP,
 	NPC_DPORT_SCTP,
 	NPC_HEADER_FIELDS_MAX,
@@ -207,6 +208,13 @@ enum key_fields {
 	/* other header fields programmed to extract but not of our interest */
 	NPC_UNKNOWN,
 	NPC_KEY_FIELDS_MAX,
+};
+
+enum npc_interface_type {
+	NPC_INTF_MODE_DEF,
+	NPC_INTF_MODE_EDSA,
+	NPC_INTF_MODE_HIGIG,
+	NPC_INTF_MODE_FDSA,
 };
 
 struct npc_kpu_profile_cam {
