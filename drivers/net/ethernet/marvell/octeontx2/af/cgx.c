@@ -217,15 +217,20 @@ int cgx_lmac_addr_set(u8 cgx_id, u8 lmac_id, u8 *mac_addr)
 {
 	struct cgx *cgx_dev = cgx_get_pdata(cgx_id);
 	struct mac_ops *mac_ops;
+	struct lmac *lmac = lmac_pdata(lmac_id, cgx_dev);
+	int index;
 	u64 cfg;
 
 	mac_ops = cgx_dev->mac_ops;
 	/* copy 6bytes from macaddr */
 	/* memcpy(&cfg, mac_addr, 6); */
 
+	/* Calculate real index of CGX DMAC table */
+	index = lmac_id * lmac->mac_to_index_bmap.max;
+
 	cfg = mac2u64 (mac_addr);
 
-	cgx_write(cgx_dev, 0, (CGXX_CMRX_RX_DMAC_CAM0 + (lmac_id * 0x8)),
+	cgx_write(cgx_dev, 0, (CGXX_CMRX_RX_DMAC_CAM0 + (index * 0x8)),
 		  cfg | CGX_DMAC_CAM_ADDR_ENABLE | ((u64)lmac_id << 49));
 
 	cfg = cgx_read(cgx_dev, lmac_id, CGXX_CMRX_RX_DMAC_CTL0);
@@ -336,11 +341,15 @@ u64 cgx_lmac_addr_get(u8 cgx_id, u8 lmac_id)
 {
 	struct cgx *cgx_dev = cgx_get_pdata(cgx_id);
 	struct mac_ops *mac_ops;
+	struct lmac *lmac = lmac_pdata(lmac_id, cgx_dev);
+	int index;
 	u64 cfg;
 
 	mac_ops = cgx_dev->mac_ops;
 
-	cfg = cgx_read(cgx_dev, 0, CGXX_CMRX_RX_DMAC_CAM0 + lmac_id * 0x8);
+	/* Calculate real index of CGX DMAC table */
+	index = lmac_id * lmac->mac_to_index_bmap.max;
+	cfg = cgx_read(cgx_dev, 0, CGXX_CMRX_RX_DMAC_CAM0 + index * 0x8);
 	return cfg & CGX_RX_DMAC_ADR_MASK;
 }
 
@@ -409,6 +418,9 @@ void cgx_lmac_promisc_config(int cgx_id, int lmac_id, bool enable)
 {
 	struct cgx *cgx = cgx_get_pdata(cgx_id);
 	struct mac_ops *mac_ops;
+	struct lmac *lmac = lmac_pdata(lmac_id, cgx);
+	u16 max_dmac = lmac->mac_to_index_bmap.max;
+	int index, i;
 	u64 cfg = 0;
 
 	if (!cgx)
@@ -422,21 +434,30 @@ void cgx_lmac_promisc_config(int cgx_id, int lmac_id, bool enable)
 		cfg |= (CGX_DMAC_BCAST_MODE | CGX_DMAC_MCAST_MODE);
 		cgx_write(cgx, lmac_id, CGXX_CMRX_RX_DMAC_CTL0, cfg);
 
-		cfg = cgx_read(cgx, 0,
-			       (CGXX_CMRX_RX_DMAC_CAM0 + lmac_id * 0x8));
-		cfg &= ~CGX_DMAC_CAM_ADDR_ENABLE;
-		cgx_write(cgx, 0,
-			  (CGXX_CMRX_RX_DMAC_CAM0 + lmac_id * 0x8), cfg);
+		for (i = 0; i < max_dmac; i++) {
+			index = lmac_id * max_dmac + i;
+			cfg = cgx_read(cgx, 0,
+				       (CGXX_CMRX_RX_DMAC_CAM0 + index * 0x8));
+			cfg &= ~CGX_DMAC_CAM_ADDR_ENABLE;
+			cgx_write(cgx, 0,
+				  (CGXX_CMRX_RX_DMAC_CAM0 + index * 0x8), cfg);
+		}
 	} else {
 		/* Disable promiscuous mode */
 		cfg = cgx_read(cgx, lmac_id, CGXX_CMRX_RX_DMAC_CTL0);
 		cfg |= CGX_DMAC_CAM_ACCEPT | CGX_DMAC_MCAST_MODE;
 		cgx_write(cgx, lmac_id, CGXX_CMRX_RX_DMAC_CTL0, cfg);
-		cfg = cgx_read(cgx, 0,
-			       (CGXX_CMRX_RX_DMAC_CAM0 + lmac_id * 0x8));
-		cfg |= CGX_DMAC_CAM_ADDR_ENABLE;
-		cgx_write(cgx, 0,
-			  (CGXX_CMRX_RX_DMAC_CAM0 + lmac_id * 0x8), cfg);
+		for (i = 0; i < max_dmac; i++) {
+			index = lmac_id * max_dmac + i;
+			cfg = cgx_read(cgx, 0,
+				       (CGXX_CMRX_RX_DMAC_CAM0 + index * 0x8));
+			if ((cfg & CGX_RX_DMAC_ADR_MASK) != 0) {
+				cfg |= CGX_DMAC_CAM_ADDR_ENABLE;
+				cgx_write(cgx, 0,
+					  (CGXX_CMRX_RX_DMAC_CAM0 + index * 0x8),
+					  cfg);
+			}
+		}
 	}
 }
 
