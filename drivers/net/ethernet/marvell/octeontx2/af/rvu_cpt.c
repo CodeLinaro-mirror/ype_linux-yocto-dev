@@ -310,9 +310,6 @@ int rvu_mbox_handler_cpt_lf_alloc(struct rvu *rvu,
 		rvu_write64(rvu, blkaddr, CPT_AF_LFX_CTL2(cptlf), val);
 	}
 
-	/* Set SSO_PF_FUNC_OVRD for inline IPSec */
-	rvu_write64(rvu, blkaddr, CPT_AF_ECO, 0x1);
-
 	return 0;
 }
 
@@ -358,13 +355,13 @@ int rvu_mbox_handler_cpt_lf_free(struct rvu *rvu, struct msg_req *req,
 }
 
 static int cpt_inline_ipsec_cfg_inbound(struct rvu *rvu, int blkaddr, u8 cptlf,
-					u8 enable, u16 sso_pf_func,
-					u16 nix_pf_func)
+					struct cpt_inline_ipsec_cfg_msg *req)
 {
+	u16 sso_pf_func = req->sso_pf_func;
 	u64 val;
 
 	val = rvu_read64(rvu, blkaddr, CPT_AF_LFX_CTL(cptlf));
-	if (enable && (val & BIT_ULL(16))) {
+	if (req->enable && (val & BIT_ULL(16))) {
 		/* IPSec inline outbound path is already enabled for a given
 		 * CPT LF, HRM states that inline inbound & outbound paths
 		 * must not be enabled at the same time for a given CPT LF
@@ -376,7 +373,7 @@ static int cpt_inline_ipsec_cfg_inbound(struct rvu *rvu, int blkaddr, u8 cptlf,
 		return CPT_AF_ERR_SSO_PF_FUNC_INVALID;
 
 	/* Set PF_FUNC_INST */
-	if (enable)
+	if (req->enable)
 		val |= BIT_ULL(9);
 	else
 		val &= ~BIT_ULL(9);
@@ -386,21 +383,25 @@ static int cpt_inline_ipsec_cfg_inbound(struct rvu *rvu, int blkaddr, u8 cptlf,
 		/* Set SSO_PF_FUNC */
 		val = rvu_read64(rvu, blkaddr, CPT_AF_LFX_CTL2(cptlf));
 		val |= (u64)sso_pf_func << 32;
-		val |= (u64)nix_pf_func << 48;
+		val |= (u64)req->nix_pf_func << 48;
 		rvu_write64(rvu, blkaddr, CPT_AF_LFX_CTL2(cptlf), val);
 	}
+	if (req->sso_pf_func_ovrd)
+		/* Set SSO_PF_FUNC_OVRD for inline IPSec */
+		rvu_write64(rvu, blkaddr, CPT_AF_ECO, 0x1);
+
 
 	return 0;
 }
 
-static int cpt_inline_ipsec_cfg_outbound(struct rvu *rvu, int blkaddr,
-					 u8 cptlf, u8 enable,
-					 u16 nix_pf_func)
+static int cpt_inline_ipsec_cfg_outbound(struct rvu *rvu, int blkaddr, u8 cptlf,
+					 struct cpt_inline_ipsec_cfg_msg *req)
 {
+	u16 nix_pf_func = req->nix_pf_func;
 	u64 val;
 
 	val = rvu_read64(rvu, blkaddr, CPT_AF_LFX_CTL(cptlf));
-	if (enable && (val & BIT_ULL(9))) {
+	if (req->enable && (val & BIT_ULL(9))) {
 		/* IPSec inline inbound path is already enabled for a given
 		 * CPT LF, HRM states that inline inbound & outbound paths
 		 * must not be enabled at the same time for a given CPT LF
@@ -413,7 +414,7 @@ static int cpt_inline_ipsec_cfg_outbound(struct rvu *rvu, int blkaddr,
 		return CPT_AF_ERR_NIX_PF_FUNC_INVALID;
 
 	/* Set PF_FUNC_INST */
-	if (enable)
+	if (req->enable)
 		val |= BIT_ULL(16);
 	else
 		val &= ~BIT_ULL(16);
@@ -451,20 +452,14 @@ int rvu_mbox_handler_cpt_inline_ipsec_cfg(struct rvu *rvu,
 
 	switch (req->dir) {
 	case CPT_INLINE_INBOUND:
-		ret = cpt_inline_ipsec_cfg_inbound(rvu, blkaddr, cptlf,
-						   req->enable,
-						   req->sso_pf_func,
-						   req->nix_pf_func);
-	break;
+		ret = cpt_inline_ipsec_cfg_inbound(rvu, blkaddr, cptlf, req);
+		break;
 
 	case CPT_INLINE_OUTBOUND:
-		ret = cpt_inline_ipsec_cfg_outbound(rvu, blkaddr, cptlf,
-						    req->enable,
-						    req->nix_pf_func);
-	break;
+		ret = cpt_inline_ipsec_cfg_outbound(rvu, blkaddr, cptlf, req);
+		break;
 
 	default:
-
 		return CPT_AF_ERR_PARAM;
 	}
 
