@@ -9,6 +9,10 @@
 
 #define OTX2_CPTVF_DRV_NAME "octeontx2-cptvf"
 
+static unsigned int cpt_block_num;
+module_param(cpt_block_num, uint, 0644);
+MODULE_PARM_DESC(cpt_block_num, "cpt block number (0=CPT0 1=CPT1, default 0)");
+
 static void cptvf_enable_pfvf_mbox_intrs(struct otx2_cptvf_dev *cptvf)
 {
 	/* Clear interrupt if any */
@@ -255,6 +259,7 @@ static int cptvf_lf_init(struct otx2_cptvf_dev *cptvf)
 
 	lfs_num = cptvf->lfs.kvf_limits ? cptvf->lfs.kvf_limits :
 		  num_online_cpus();
+	cptvf->blkaddr = (cpt_block_num == 0) ? BLKADDR_CPT0 : BLKADDR_CPT1;
 	ret = otx2_cptlf_init(lfs, eng_grp_msk, OTX2_CPT_QUEUE_HI_PRIO,
 			      lfs_num);
 	if (ret)
