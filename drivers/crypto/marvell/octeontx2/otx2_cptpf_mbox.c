@@ -9,7 +9,7 @@
  * CPT PF driver version, It will be incremented by 1 for every feature
  * addition in CPT mailbox messages.
  */
-#define OTX2_CPT_PF_DRV_VERSION 0x2
+#define OTX2_CPT_PF_DRV_VERSION 0x3
 
 static int forward_to_af(struct otx2_cptpf_dev *cptpf,
 			 struct otx2_cptvf_info *vf,
