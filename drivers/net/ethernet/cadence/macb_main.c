@@ -2932,6 +2932,46 @@ static void macb_get_regs(struct net_device *dev, struct ethtool_regs *regs,
 		regs_buff[13] = gem_readl(bp, DMACFG);
 }
 
+static void macb_get_wol(struct net_device *netdev, struct ethtool_wolinfo *wol)
+{
+	struct macb *bp = netdev_priv(netdev);
+
+	if (bp->wol & MACB_WOL_HAS_MAGIC_PACKET) {
+		phylink_ethtool_get_wol(bp->phylink, wol);
+		wol->supported |= WAKE_MAGIC;
+
+		if (bp->wol & MACB_WOL_ENABLED)
+			wol->wolopts |= WAKE_MAGIC;
+	}
+}
+
+static int macb_set_wol(struct net_device *netdev, struct ethtool_wolinfo *wol)
+{
+	struct macb *bp = netdev_priv(netdev);
+	int ret;
+
+	/* Pass the order to phylink layer */
+	ret = phylink_ethtool_set_wol(bp->phylink, wol);
+	/* Don't manage WoL on MAC if handled by the PHY
+	 * or if there's a failure in talking to the PHY
+	 */
+	if (!ret || ret != -EOPNOTSUPP)
+		return ret;
+
+	if (!(bp->wol & MACB_WOL_HAS_MAGIC_PACKET) ||
+	    (wol->wolopts & ~WAKE_MAGIC))
+		return -EOPNOTSUPP;
+
+	if (wol->wolopts & WAKE_MAGIC)
+		bp->wol |= MACB_WOL_ENABLED;
+	else
+		bp->wol &= ~MACB_WOL_ENABLED;
+
+	device_set_wakeup_enable(&bp->pdev->dev, bp->wol & MACB_WOL_ENABLED);
+
+	return 0;
+}
+
 static int macb_get_link_ksettings(struct net_device *netdev,
 				   struct ethtool_link_ksettings *kset)
 {
@@ -4534,7 +4574,17 @@ static int macb_probe(struct platform_device *pdev)
 	bp->tx_clk = tx_clk;
 	bp->rx_clk = rx_clk;
 	bp->tsu_clk = tsu_clk;
+<<<<<<< HEAD
 	bp->jumbo_max_len = macb_config->jumbo_max_len;
+=======
+	if (macb_config)
+		bp->jumbo_max_len = macb_config->jumbo_max_len;
+
+	bp->wol = 0;
+	if (of_get_property(np, "magic-packet", NULL))
+		bp->wol |= MACB_WOL_HAS_MAGIC_PACKET;
+	device_set_wakeup_capable(&pdev->dev, bp->wol & MACB_WOL_HAS_MAGIC_PACKET);
+>>>>>>> standard/base
 
 	spin_lock_init(&bp->lock);
 
@@ -4751,7 +4801,8 @@ static int __maybe_unused macb_suspend(struct device *dev)
 
 	if (bp->ptp_info)
 		bp->ptp_info->ptp_remove(netdev);
-	pm_runtime_force_suspend(dev);
+	if (!device_may_wakeup(dev))
+		pm_runtime_force_suspend(dev);
 
 	return 0;
 }
@@ -4767,7 +4818,8 @@ static int __maybe_unused macb_resume(struct device *dev)
 	if (!netif_running(netdev))
 		return 0;
 
-	pm_runtime_force_resume(dev);
+	if (!device_may_wakeup(dev))
+		pm_runtime_force_resume(dev);
 
 	if (device_may_wakeup(&bp->dev->dev)) {
 		spin_lock_irqsave(&bp->lock, flags);
@@ -4815,7 +4867,7 @@ static int __maybe_unused macb_runtime_suspend(struct device *dev)
 	struct net_device *netdev = dev_get_drvdata(dev);
 	struct macb *bp = netdev_priv(netdev);
 
-	if (!(device_may_wakeup(&bp->dev->dev))) {
+	if (!(device_may_wakeup(dev))) {
 		clk_disable_unprepare(bp->tx_clk);
 		clk_disable_unprepare(bp->hclk);
 		clk_disable_unprepare(bp->pclk);
@@ -4834,7 +4886,7 @@ static int __maybe_unused macb_runtime_resume(struct device *dev)
 	struct net_device *netdev = dev_get_drvdata(dev);
 	struct macb *bp = netdev_priv(netdev);
 
-	if (!(device_may_wakeup(&bp->dev->dev))) {
+	if (!(device_may_wakeup(dev))) {
 		clk_prepare_enable(bp->pclk);
 		clk_prepare_enable(bp->hclk);
 		clk_prepare_enable(bp->tx_clk);
