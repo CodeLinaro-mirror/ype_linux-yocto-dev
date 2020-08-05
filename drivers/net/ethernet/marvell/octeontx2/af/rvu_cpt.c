@@ -10,6 +10,7 @@
 
 /* CPT PF device id */
 #define	PCI_DEVID_OTX2_CPT_PF	0xA0FD
+#define	PCI_DEVID_OTX2_CPT10_PF	0xA0F2
 #define	PCI_DEVID_OTX2_CPT10K_PF 0xA0F2
 
 /* Fault interrupts names */
