@@ -879,7 +879,10 @@ void rvu_npc_update_flowkey_alg_idx(struct rvu *rvu, u16 pcifunc, int nixlf,
 	rvu_write64(rvu, blkaddr,
 		    NPC_AF_MCAMEX_BANKX_ACTION(index, bank), *(u64 *)&action);
 
-	/* update the VF flow rule action with the VF default entry action */
+	/* update the VF flow rule action with the VF default entry action
+	 * due to restriction of the dataplane application PF adding the
+	 * VF flow rule can not specify the rx action explicitly.
+	 */
 	if (mcam_index < 0)
 		npc_update_vf_flow_entry(rvu, mcam, blkaddr, pcifunc,
 					 *(u64 *)&action);
@@ -1026,6 +1029,8 @@ void rvu_npc_free_mcam_entries(struct rvu *rvu, u16 pcifunc, int nixlf)
 	}
 
 	mutex_unlock(&mcam->lock);
+
+	npc_mcam_disable_flows(rvu, pcifunc);
 
 	rvu_npc_disable_default_entries(rvu, pcifunc, nixlf);
 }
