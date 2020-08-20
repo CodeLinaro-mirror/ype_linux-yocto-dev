@@ -434,7 +434,7 @@ struct rvu_fwdata {
 #define VF_MACNUM_MAX	256
 	u64 pf_macs[PF_MACNUM_MAX];
 	u64 vf_macs[VF_MACNUM_MAX];
-#define CGX_MAX         3
+#define CGX_MAX         5
 #define CGX_LMACS_MAX   4
 	struct cgx_lmac_fwdata_s cgx_fw_data[CGX_MAX][CGX_LMACS_MAX];
 	u64 sclk;
@@ -482,7 +482,7 @@ struct rvu {
 	u8			cgx_mapped_pfs;
 	u8			cgx_cnt_max;	 /* CGX port count max */
 	u8			*pf2cgxlmac_map; /* pf to cgx_lmac map */
-	u16			*cgxlmac2pf_map; /* bitmap of mapped pfs for
+	u64			*cgxlmac2pf_map; /* bitmap of mapped pfs for
 						  * every cgx lmac port
 						  */
 	unsigned long		pf_notify_bmap; /* Flags for PF notification */
