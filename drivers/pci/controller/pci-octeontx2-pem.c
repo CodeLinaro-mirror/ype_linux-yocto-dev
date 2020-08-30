@@ -468,7 +468,10 @@ static struct pci_ecam_ops pci_octeontx2_pem_ops = {
 };
 
 static const struct of_device_id octeontx2_pem_of_match[] = {
-	{ .compatible = "marvell,pci-host-octeontx2-pem" },
+	{
+		.compatible = "marvell,pci-host-octeontx2-pem",
+		.data = &pci_octeontx2_pem_ops,
+	},
 	{ },
 };
 
