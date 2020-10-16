@@ -35,9 +35,9 @@ static const char * const npc_flow_names[] = {
 	[NPC_DPORT_TCP]	= "tcp destination port",
 	[NPC_SPORT_UDP]	= "udp source port",
 	[NPC_DPORT_UDP]	= "udp destination port",
-	[NPC_FDSA_VAL]	= "FDSA tag value ",
 	[NPC_SPORT_SCTP] = "sctp source port",
 	[NPC_DPORT_SCTP] = "sctp destination port",
+	[NPC_FDSA_VAL]	= "FDSA tag value ",
 	[NPC_UNKNOWN]	= "unknown",
 };
 
