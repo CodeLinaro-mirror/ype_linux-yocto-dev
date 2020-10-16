@@ -22,8 +22,6 @@
 #define DRV_NAME	"octeontx2-nicpf"
 #define DRV_VF_NAME	"octeontx2-nicvf"
 
-#define OTX2_DEFAULT_ACTION	0x1
-
 static struct cgx_fw_data *otx2_get_fwdata(struct otx2_nic *pfvf);
 
 static const char otx2_priv_flags_strings[][ETH_GSTRING_LEN] = {
