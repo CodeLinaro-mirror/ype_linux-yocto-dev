@@ -9,6 +9,8 @@
 #include "otx2_common.h"
 
 #define OTX2_DEFAULT_ACTION	0x1
+#define FDSA_MAX_SPORT		32
+#define FDSA_SPORT_MASK         0xf8
 
 struct otx2_flow {
 	struct ethtool_rx_flow_spec flow_spec;
@@ -272,6 +274,24 @@ int otx2_get_all_flows(struct otx2_nic *pfvf, struct ethtool_rxnfc *nfc,
 	nfc->rule_cnt = rule_cnt;
 
 	return err;
+}
+
+static void otx2_prepare_fdsa_flow_request(struct npc_install_flow_req *req,
+					   bool is_vlan)
+{
+	struct flow_msg *pmask = &req->mask;
+	struct flow_msg *pkt = &req->packet;
+
+	/* In FDSA tag srcport starts from b3..b7 */
+	if (!is_vlan) {
+		pkt->vlan_tci <<= 3;
+		pmask->vlan_tci = cpu_to_be16(FDSA_SPORT_MASK);
+	}
+	/* Strip FDSA tag */
+	req->features |= BIT_ULL(NPC_FDSA_VAL);
+	req->vtag0_valid = true;
+	req->vtag0_type = NIX_AF_LFX_RX_VTAG_TYPE6;
+	req->op = NIX_RX_ACTION_DEFAULT;
 }
 
 static int otx2_prepare_ipv4_flow(struct ethtool_rx_flow_spec *fsp,
