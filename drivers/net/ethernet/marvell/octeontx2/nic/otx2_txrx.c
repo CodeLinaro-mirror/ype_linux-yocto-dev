@@ -472,7 +472,7 @@ int otx2_napi_handler(struct napi_struct *napi, int budget)
 	}
 
 	if (rx_cq && rx_cq->pool_ptrs)
-		otx2_refill_pool_ptrs(pfvf, rx_cq);
+		pfvf->hw_ops->refill_pool_ptrs(pfvf, rx_cq);
 	/* Clear the IRQ */
 	otx2_write64(pfvf, NIX_LF_CINTX_INT(cq_poll->cint_idx), BIT_ULL(0));
 
@@ -1095,7 +1095,7 @@ bool otx2_xdp_sq_append_pkt(struct otx2_nic *pfvf, u64 iova, int len, u16 qidx)
 
 	otx2_xdp_sqe_add_sg(sq, iova, len, &offset);
 	sqe_hdr->sizem1 = (offset / 16) - 1;
-	otx2_sqe_flush(NULL, sq, offset, 0);
+	pfvf->hw_ops->sqe_flush(pfvf, sq, offset, qidx);
 
 	return true;
 }
