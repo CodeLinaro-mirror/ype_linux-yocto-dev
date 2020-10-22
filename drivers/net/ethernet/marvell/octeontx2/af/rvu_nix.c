@@ -293,7 +293,7 @@ static int nix_interface_init(struct rvu *rvu, u16 pcifunc, int type, int nixlf,
 		break;
 	case NIX_INTF_TYPE_SDP:
 		/* Added single interface and single channel support for now */
-		pfvf->rx_chan_base = NIX_CHAN_SDP_CHX(0);
+		pfvf->rx_chan_base = rvu_nix_chan_sdp(rvu, 0);
 		pfvf->tx_chan_base = pfvf->rx_chan_base;
 		pfvf->rx_chan_cnt = 1;
 		pfvf->tx_chan_cnt = 1;

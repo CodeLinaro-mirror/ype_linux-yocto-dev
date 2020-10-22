@@ -623,6 +623,16 @@ static inline u16 rvu_nix_chan_lbk(struct rvu *rvu, u8 lbkid,
 	return rvu->hw->lbk_chan_base + lbkid * lbk_chans + chan;
 }
 
+static inline u16 rvu_nix_chan_sdp(struct rvu *rvu, u8 chan)
+{
+	struct rvu_hwinfo *hw = rvu->hw;
+
+	if (!hw->cap.programmable_chans)
+		return NIX_CHAN_SDP_CHX(chan);
+
+	return hw->sdp_chan_base + chan;
+}
+
 static inline u16 rvu_nix_chan_cpt(struct rvu *rvu, u8 chan)
 {
 	return rvu->hw->cpt_chan_base + chan;
@@ -852,4 +862,5 @@ bool is_parse_nibble_config_valid(struct rvu *rvu,
 				  struct npc_mcam_kex *mcam_kex);
 int rvu_npc_set_parse_mode(struct rvu *rvu, u16 pcifunc, u64 mode, u8 dir,
 			   u64 pkind);
+
 #endif /* RVU_H */
