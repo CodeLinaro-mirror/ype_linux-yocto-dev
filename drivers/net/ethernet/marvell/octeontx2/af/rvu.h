@@ -288,6 +288,7 @@ struct rvu_pfvf {
 	bool	is_sdp0; /* is this PF mapped to SDP0 */
 	bool	is_sdp1; /* is this PF mapped to SDP1 */
 	u64     lmt_base_addr; /* Preseving the pcifunc's lmtst base addr*/
+	u64     lmt_map_ent_w1; /*Preseving the word1 of lmtst map table entry*/
 	int     intf_mode;
 };
 
