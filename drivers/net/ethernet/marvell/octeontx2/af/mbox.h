@@ -656,10 +656,13 @@ struct cgx_set_link_mode_rsp {
 };
 
 #define RVU_LMAC_FEAT_FC		BIT_ULL(0) /* pause frames */
-#define RVU_LMAC_FEAT_PTP		BIT_ULL(1) /* precision time protocol */
-#define RVU_MAC_VERSION			BIT_ULL(2)
-#define RVU_MAC_CGX			BIT_ULL(3)
-#define RVU_MAC_RPM			BIT_ULL(4)
+#define	RVU_LMAC_FEAT_HIGIG2		BIT_ULL(1)
+			/* flow control from physical link higig2 messages */
+#define RVU_LMAC_FEAT_PTP		BIT_ULL(2) /* precison time protocol */
+#define RVU_LMAC_FEAT_DMACF		BIT_ULL(3) /* DMAC FILTER */
+#define RVU_MAC_VERSION			BIT_ULL(4)
+#define RVU_MAC_CGX			0
+#define RVU_MAC_RPM			1
 
 struct cgx_features_info_msg {
 	struct mbox_msghdr hdr;
@@ -1309,6 +1312,7 @@ enum npc_af_status {
 	NPC_MCAM_ALLOC_FAILED	= -703,
 	NPC_MCAM_PERM_DENIED	= -704,
 	NPC_AF_ERR_HIGIG_CONFIG_FAIL	= -705,
+	NPC_AF_ERR_HIGIG_NOT_SUPPORTED	= -706,
 };
 
 struct npc_mcam_alloc_entry_req {

@@ -81,6 +81,11 @@ static bool is_dev_rpm(void *cgxd)
 	return (cgx->pdev->device == PCI_DEVID_CN10K_RPM);
 }
 
+struct mac_ops *cgx_get_mac_ops(void *cgxd)
+{
+	return ((struct cgx *)cgxd)->mac_ops;
+}
+
 bool is_lmac_valid(struct cgx *cgx, int lmac_id)
 {
 	if (!cgx || lmac_id < 0 || lmac_id >= MAX_LMAC_PER_CGX)
@@ -368,6 +373,12 @@ int cgx_get_pkind(void *cgxd, u8 lmac_id, int *pkind)
 {
 	struct cgx *cgx = cgxd;
 
+	/* flow control configuration logic is changed for RPM.
+	 * Will add the support later
+	 */
+	if (is_dev_rpm(cgx))
+		return 0;
+
 	if (!cgx || lmac_id >= cgx->lmac_count)
 		return -ENODEV;
 
@@ -467,6 +478,10 @@ void cgx_lmac_enadis_rx_pause_fwding(void *cgxd, int lmac_id, bool enable)
 	struct cgx *cgx = cgxd;
 	u64 cfg;
 
+	/* FIXME add support rx pause forwarding */
+	if (is_dev_rpm(cgx))
+		return;
+
 	if (!cgx)
 		return;
 
@@ -491,8 +506,10 @@ void cgx_lmac_enadis_rx_pause_fwding(void *cgxd, int lmac_id, bool enable)
 
 int cgx_get_rx_stats(void *cgxd, int lmac_id, int idx, u64 *rx_stat)
 {
+	struct mac_ops *mac_ops;
 	struct cgx *cgx = cgxd;
 
+	mac_ops = cgx->mac_ops;
 	if (!is_lmac_valid(cgx, lmac_id))
 		return -ENODEV;
 
@@ -506,8 +523,10 @@ int cgx_get_rx_stats(void *cgxd, int lmac_id, int idx, u64 *rx_stat)
 
 int cgx_get_tx_stats(void *cgxd, int lmac_id, int idx, u64 *tx_stat)
 {
+	struct mac_ops *mac_ops;
 	struct cgx *cgx = cgxd;
 
+	mac_ops = cgx->mac_ops;
 	if (!is_lmac_valid(cgx, lmac_id))
 		return -ENODEV;
 	*tx_stat = cgx_read(cgx, lmac_id, CGXX_CMRX_TX_STAT0 + (idx * 8));
@@ -516,9 +535,11 @@ int cgx_get_tx_stats(void *cgxd, int lmac_id, int idx, u64 *tx_stat)
 
 int cgx_stats_rst(void *cgxd, int lmac_id)
 {
+	struct mac_ops *mac_ops;
 	struct cgx *cgx = cgxd;
 	int stat_id;
 
+	mac_ops = cgx->mac_ops;
 	if (!cgx || lmac_id >= cgx->lmac_count)
 		return -ENODEV;
 
@@ -784,6 +805,10 @@ static void cgx_lmac_pause_frm_config(void *cgxd, int lmac_id, bool enable)
 	struct cgx *cgx = cgxd;
 	u64 cfg;
 
+	/* FIXME add support for pause frame */
+	if (is_dev_rpm(cgxd))
+		return;
+
 	if (!is_lmac_valid(cgx, lmac_id))
 		return;
 	if (enable) {
@@ -852,6 +877,12 @@ void cgx_lmac_ptp_config(void *cgxd, int lmac_id, bool enable)
 {
 	struct cgx *cgx = cgxd;
 	u64 cfg;
+
+	/* PTP configuration logic is changed for RPM.
+	 * Will add the support later
+	 */
+	if (is_dev_rpm(cgx))
+		return;
 
 	if (!cgx)
 		return;
@@ -1645,9 +1676,10 @@ static int cgx_lmac_exit(struct cgx *cgx)
 static void cgx_populate_features(struct cgx *cgx)
 {
 	if (is_dev_rpm(cgx))
-		cgx->hw_features =  (RVU_MAC_RPM | RVU_LMAC_FEAT_FC);
+		cgx->hw_features = RVU_LMAC_FEAT_DMACF | RVU_MAC_RPM;
 	else
-		cgx->hw_features = (RVU_LMAC_FEAT_FC | RVU_LMAC_FEAT_PTP);
+		cgx->hw_features = (RVU_LMAC_FEAT_FC  | RVU_LMAC_FEAT_HIGIG2 |
+				    RVU_LMAC_FEAT_PTP | RVU_LMAC_FEAT_DMACF);
 }
 
 static struct mac_ops	cgx_mac_ops    = {
@@ -1741,7 +1773,6 @@ static int cgx_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	}
 
 	list_add(&cgx->cgx_list, &cgx_list);
-
 
 	cgx_populate_features(cgx);
 

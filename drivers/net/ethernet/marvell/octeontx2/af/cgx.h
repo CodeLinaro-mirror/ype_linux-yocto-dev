@@ -42,7 +42,7 @@
 #define FW_CGX_INT			BIT_ULL(1)
 #define CGXX_CMRX_INT_ENA_W1S		0x058
 #define CGXX_CMRX_RX_ID_MAP		0x060
-#define CGXX_CMRX_RX_STAT0		0x070
+#define CGXX_CMRX_RX_STAT0		(0x070 + mac_ops->csr_offset)
 #define CGXX_CMRX_RX_LMACS		0x128
 #define CGXX_CMRX_RX_DMAC_CTL0		(0x1F8 + mac_ops->csr_offset)
 #define CGX_DMAC_CTL0_CAM_ENABLE	BIT_ULL(3)
@@ -56,7 +56,7 @@
 #define CGXX_CMRX_TX_FIFO_LEN		0x618
 #define CGXX_CMRX_TX_LMAC_IDLE		BIT_ULL(14)
 #define CGXX_CMRX_TX_LMAC_E_IDLE	BIT_ULL(29)
-#define CGXX_CMRX_TX_STAT0		0x700
+#define CGXX_CMRX_TX_STAT0		(0x700 + mac_ops->csr_offset)
 #define CGXX_SCRATCH0_REG		0x1050
 #define CGXX_SCRATCH1_REG		0x1058
 #define CGX_CONST			0x2000
