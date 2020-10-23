@@ -254,6 +254,9 @@ int cgx_lmac_addr_add(u8 cgx_id, u8 lmac_id, u8 *mac_addr)
 	int index, idx;
 	u64 cfg = 0;
 
+	if (!lmac)
+		return -ENODEV;
+
 	mac_ops = cgx_dev->mac_ops;
 
 	/* Get available index where entry is to be installed */
@@ -286,6 +289,9 @@ int cgx_lmac_addr_reset(u8 cgx_id, u8 lmac_id)
 	u8 index = 0;
 	u64 cfg;
 
+	if (!lmac)
+		return -ENODEV;
+
 	mac_ops = cgx_dev->mac_ops;
 
 	/* Restore index 0 to its default init value as done during
@@ -311,6 +317,9 @@ int cgx_lmac_addr_del(u8 cgx_id, u8 lmac_id, u8 index)
 	struct mac_ops *mac_ops;
 	struct cgx *cgx_dev = cgx_get_pdata(cgx_id);
 	struct lmac *lmac = lmac_pdata(lmac_id, cgx_dev);
+
+	if (!lmac)
+		return -ENODEV;
 
 	mac_ops = cgx_dev->mac_ops;
 	/* Validate the index */
