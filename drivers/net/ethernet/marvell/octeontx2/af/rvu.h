@@ -726,6 +726,7 @@ int rvu_cgx_nix_cuml_stats(struct rvu *rvu, void *cgxd, int lmac_id, int index,
 bool is_cgx_config_permitted(struct rvu *rvu, u16 pcifunc);
 bool rvu_cgx_is_pkind_config_permitted(struct rvu *rvu, u16 pcifunc);
 bool is_mac_feature_supported(struct rvu *rvu, int pf, int feature);
+u32  rvu_cgx_get_fifolen(struct rvu *rvu);
 
 /* SSO APIs */
 int rvu_sso_init(struct rvu *rvu);

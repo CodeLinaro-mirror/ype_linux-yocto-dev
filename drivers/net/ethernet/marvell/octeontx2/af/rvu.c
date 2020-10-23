@@ -1176,6 +1176,8 @@ cpt:
 
 	rvu_program_channels(rvu);
 
+	rvu_get_lbk_bufsize(rvu);
+
 	return 0;
 
 nix_err:
