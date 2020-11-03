@@ -1373,6 +1373,7 @@ static int otx2_init_hw_resources(struct otx2_nic *pf)
 	struct nix_lf_free_req *free_req;
 	struct mbox *mbox = &pf->mbox;
 	struct otx2_hw *hw = &pf->hw;
+	size_t max_pkt_bytes;
 	struct msg_req *req;
 	int err = 0, lvl;
 
@@ -1384,7 +1385,8 @@ static int otx2_init_hw_resources(struct otx2_nic *pf)
 	hw->sqpool_cnt = hw->tot_tx_queues;
 	hw->pool_cnt = hw->rqpool_cnt + hw->sqpool_cnt;
 
-	pf->max_frs = pf->netdev->mtu + OTX2_ETH_HLEN + OTX2_HW_TIMESTAMP_LEN;
+	pf->max_frs = pf->netdev->mtu + OTX2_ETH_HLEN + pf->addl_mtu +
+		      OTX2_HW_TIMESTAMP_LEN + pf->xtra_hdr;
 
 	pf->rbsize = otx2_get_rbuf_size(pf, pf->netdev->mtu);
 
