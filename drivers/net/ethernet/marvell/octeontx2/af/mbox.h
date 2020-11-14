@@ -671,8 +671,8 @@ struct cgx_set_link_mode_rsp {
 #define RVU_LMAC_FEAT_PTP		BIT_ULL(2) /* precison time protocol */
 #define RVU_LMAC_FEAT_DMACF		BIT_ULL(3) /* DMAC FILTER */
 #define RVU_MAC_VERSION			BIT_ULL(4)
-#define RVU_MAC_CGX			0
-#define RVU_MAC_RPM			1
+#define RVU_MAC_CGX			BIT_ULL(5)
+#define RVU_MAC_RPM			BIT_ULL(6)
 
 struct cgx_features_info_msg {
 	struct mbox_msghdr hdr;

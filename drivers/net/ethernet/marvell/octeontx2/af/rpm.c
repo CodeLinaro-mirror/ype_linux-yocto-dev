@@ -260,12 +260,12 @@ int rpm_lmac_internal_loopback(void *rpmd, int lmac_id, bool enable)
 			cfg &= ~RPMX_MTI_PCS_LBK;
 		rpm_write(rpm, lmac_id, RPMX_MTI_PCS100X_CONTROL1, cfg);
 	} else {
-		cfg = rpm_read(rpm, lmac_id, RPMX_MTI_LPCSX_CONTROL1);
+		cfg = rpm_read(rpm, 0, RPMX_MTI_LPCSX_CONTROL(lmac_id));
 		if (enable)
 			cfg |= RPMX_MTI_PCS_LBK;
 		else
 			cfg &= ~RPMX_MTI_PCS_LBK;
-		rpm_write(rpm, lmac_id, RPMX_MTI_LPCSX_CONTROL1, cfg);
+		rpm_write(rpm, 0, RPMX_MTI_LPCSX_CONTROL(lmac_id), cfg);
 	}
 
 	return 0;

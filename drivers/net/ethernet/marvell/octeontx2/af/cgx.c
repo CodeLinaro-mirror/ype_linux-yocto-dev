@@ -515,10 +515,8 @@ void cgx_lmac_enadis_rx_pause_fwding(void *cgxd, int lmac_id, bool enable)
 
 int cgx_get_rx_stats(void *cgxd, int lmac_id, int idx, u64 *rx_stat)
 {
-	struct mac_ops *mac_ops;
 	struct cgx *cgx = cgxd;
 
-	mac_ops = cgx->mac_ops;
 	if (!is_lmac_valid(cgx, lmac_id))
 		return -ENODEV;
 
@@ -532,10 +530,8 @@ int cgx_get_rx_stats(void *cgxd, int lmac_id, int idx, u64 *rx_stat)
 
 int cgx_get_tx_stats(void *cgxd, int lmac_id, int idx, u64 *tx_stat)
 {
-	struct mac_ops *mac_ops;
 	struct cgx *cgx = cgxd;
 
-	mac_ops = cgx->mac_ops;
 	if (!is_lmac_valid(cgx, lmac_id))
 		return -ENODEV;
 	*tx_stat = cgx_read(cgx, lmac_id, CGXX_CMRX_TX_STAT0 + (idx * 8));
@@ -544,11 +540,9 @@ int cgx_get_tx_stats(void *cgxd, int lmac_id, int idx, u64 *tx_stat)
 
 int cgx_stats_rst(void *cgxd, int lmac_id)
 {
-	struct mac_ops *mac_ops;
 	struct cgx *cgx = cgxd;
 	int stat_id;
 
-	mac_ops = cgx->mac_ops;
 	if (!cgx || lmac_id >= cgx->lmac_count)
 		return -ENODEV;
 
