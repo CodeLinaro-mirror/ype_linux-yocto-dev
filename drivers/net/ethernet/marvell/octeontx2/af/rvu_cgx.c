@@ -628,6 +628,9 @@ int rvu_mbox_handler_cgx_mac_addr_set(struct rvu *rvu,
 	struct rvu_pfvf *pfvf;
 	u8 cgx_id, lmac_id;
 
+	if (!is_pf_cgxmapped(rvu, pf))
+		return -EPERM;
+
 	if (!is_cgx_config_permitted(rvu, req->hdr.pcifunc))
 		return -EPERM;
 
@@ -702,6 +705,9 @@ int rvu_mbox_handler_cgx_mac_addr_get(struct rvu *rvu,
 {
 	struct rvu_pfvf *pfvf = rvu_get_pfvf(rvu, req->hdr.pcifunc);
 	int i;
+
+	if (!is_pf_cgxmapped(rvu, rvu_get_pf(req->hdr.pcifunc)))
+		return -EPERM;
 
 	if (!is_cgx_config_permitted(rvu, req->hdr.pcifunc))
 		return -EPERM;
@@ -1125,6 +1131,9 @@ int rvu_mbox_handler_cgx_set_phy_mod_type(struct rvu *rvu,
 	int pf = rvu_get_pf(req->hdr.pcifunc);
 	u8 cgx_id, lmac_id;
 
+	if (!is_pf_cgxmapped(rvu, pf))
+		return -EPERM;
+
 	rvu_get_cgx_lmac_id(rvu->pf2cgxlmac_map[pf], &cgx_id, &lmac_id);
 	return cgx_set_phy_mod_type(req->mod, rvu_cgx_pdata(cgx_id, rvu),
 				    lmac_id);
@@ -1135,6 +1144,9 @@ int rvu_mbox_handler_cgx_get_phy_mod_type(struct rvu *rvu, struct msg_req *req,
 {
 	int pf = rvu_get_pf(req->hdr.pcifunc);
 	u8 cgx_id, lmac_id;
+
+	if (!is_pf_cgxmapped(rvu, pf))
+		return -EPERM;
 
 	rvu_get_cgx_lmac_id(rvu->pf2cgxlmac_map[pf], &cgx_id, &lmac_id);
 	rsp->mod = cgx_get_phy_mod_type(rvu_cgx_pdata(cgx_id, rvu), lmac_id);
