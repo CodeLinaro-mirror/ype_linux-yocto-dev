@@ -24,6 +24,8 @@
 #include "vc4_drv.h"
 #include "vc4_regs.h"
 
+#define HVS_NUM_CHANNELS 3
+
 struct vc4_ctm_state {
 	struct drm_private_state base;
 	struct drm_color_ctm *ctm;
@@ -33,6 +35,17 @@ struct vc4_ctm_state {
 static struct vc4_ctm_state *to_vc4_ctm_state(struct drm_private_state *priv)
 {
 	return container_of(priv, struct vc4_ctm_state, base);
+}
+
+struct vc4_hvs_state {
+	struct drm_private_state base;
+	unsigned int unassigned_channels;
+};
+
+static struct vc4_hvs_state *
+to_vc4_hvs_state(struct drm_private_state *priv)
+{
+	return container_of(priv, struct vc4_hvs_state, base);
 }
 
 struct vc4_load_tracker_state {
@@ -113,7 +126,7 @@ static int vc4_ctm_obj_init(struct vc4_dev *vc4)
 	drm_atomic_private_obj_init(&vc4->base, &vc4->ctm_manager, &ctm_state->base,
 				    &vc4_ctm_state_funcs);
 
-	return drmm_add_action(&vc4->base, vc4_ctm_obj_fini, NULL);
+	return drmm_add_action_or_reset(&vc4->base, vc4_ctm_obj_fini, NULL);
 }
 
 /* Converts a DRM S31.32 value to the HW S0.9 format. */
@@ -170,6 +183,19 @@ vc4_ctm_commit(struct vc4_dev *vc4, struct drm_atomic_state *state)
 
 	HVS_WRITE(SCALER_OLEDOFFS,
 		  VC4_SET_FIELD(ctm_state->fifo, SCALER_OLEDOFFS_DISPFIFO));
+}
+
+static struct vc4_hvs_state *
+vc4_hvs_get_global_state(struct drm_atomic_state *state)
+{
+	struct vc4_dev *vc4 = to_vc4_dev(state->dev);
+	struct drm_private_state *priv_state;
+
+	priv_state = drm_atomic_get_private_obj_state(state, &vc4->hvs_channels);
+	if (IS_ERR(priv_state))
+		return ERR_CAST(priv_state);
+
+	return to_vc4_hvs_state(priv_state);
 }
 
 static void vc4_hvs_pv_muxing_commit(struct vc4_dev *vc4,
@@ -243,51 +269,60 @@ static void vc5_hvs_pv_muxing_commit(struct vc4_dev *vc4,
 		struct vc4_crtc *vc4_crtc = to_vc4_crtc(crtc);
 		struct vc4_crtc_state *vc4_state;
 
-		if (!crtc_state->active)
+		if (!vc4_state->update_muxing)
 			continue;
 
 		vc4_state = to_vc4_crtc_state(crtc_state);
 		switch (vc4_crtc->data->hvs_output) {
 		case 2:
-			dsp2_mux = (vc4_state->assigned_channel == 2) ? 0 : 1;
+			mux = (vc4_state->assigned_channel == 2) ? 0 : 1;
+			reg = HVS_READ(SCALER_DISPECTRL);
+			HVS_WRITE(SCALER_DISPECTRL,
+				  (reg & ~SCALER_DISPECTRL_DSP2_MUX_MASK) |
+				  VC4_SET_FIELD(mux, SCALER_DISPECTRL_DSP2_MUX));
 			break;
 
 		case 3:
-			dsp3_mux = vc4_state->assigned_channel;
+			if (vc4_state->assigned_channel == VC4_HVS_CHANNEL_DISABLED)
+				mux = 3;
+			else
+				mux = vc4_state->assigned_channel;
+
+			reg = HVS_READ(SCALER_DISPCTRL);
+			HVS_WRITE(SCALER_DISPCTRL,
+				  (reg & ~SCALER_DISPCTRL_DSP3_MUX_MASK) |
+				  VC4_SET_FIELD(mux, SCALER_DISPCTRL_DSP3_MUX));
 			break;
 
 		case 4:
-			dsp4_mux = vc4_state->assigned_channel;
+			if (vc4_state->assigned_channel == VC4_HVS_CHANNEL_DISABLED)
+				mux = 3;
+			else
+				mux = vc4_state->assigned_channel;
+
+			reg = HVS_READ(SCALER_DISPEOLN);
+			HVS_WRITE(SCALER_DISPEOLN,
+				  (reg & ~SCALER_DISPEOLN_DSP4_MUX_MASK) |
+				  VC4_SET_FIELD(mux, SCALER_DISPEOLN_DSP4_MUX));
+
 			break;
 
 		case 5:
-			dsp5_mux = vc4_state->assigned_channel;
+			if (vc4_state->assigned_channel == VC4_HVS_CHANNEL_DISABLED)
+				mux = 3;
+			else
+				mux = vc4_state->assigned_channel;
+
+			reg = HVS_READ(SCALER_DISPDITHER);
+			HVS_WRITE(SCALER_DISPDITHER,
+				  (reg & ~SCALER_DISPDITHER_DSP5_MUX_MASK) |
+				  VC4_SET_FIELD(mux, SCALER_DISPDITHER_DSP5_MUX));
 			break;
 
 		default:
 			break;
 		}
 	}
-
-	reg = HVS_READ(SCALER_DISPECTRL);
-	HVS_WRITE(SCALER_DISPECTRL,
-		  (reg & ~SCALER_DISPECTRL_DSP2_MUX_MASK) |
-		  VC4_SET_FIELD(dsp2_mux, SCALER_DISPECTRL_DSP2_MUX));
-
-	reg = HVS_READ(SCALER_DISPCTRL);
-	HVS_WRITE(SCALER_DISPCTRL,
-		  (reg & ~SCALER_DISPCTRL_DSP3_MUX_MASK) |
-		  VC4_SET_FIELD(dsp3_mux, SCALER_DISPCTRL_DSP3_MUX));
-
-	reg = HVS_READ(SCALER_DISPEOLN);
-	HVS_WRITE(SCALER_DISPEOLN,
-		  (reg & ~SCALER_DISPEOLN_DSP4_MUX_MASK) |
-		  VC4_SET_FIELD(dsp4_mux, SCALER_DISPEOLN_DSP4_MUX));
-
-	reg = HVS_READ(SCALER_DISPDITHER);
-	HVS_WRITE(SCALER_DISPDITHER,
-		  (reg & ~SCALER_DISPDITHER_DSP5_MUX_MASK) |
-		  VC4_SET_FIELD(dsp5_mux, SCALER_DISPDITHER_DSP5_MUX));
 }
 
 static void
@@ -680,11 +715,18 @@ static int vc4_load_tracker_obj_init(struct vc4_dev *vc4)
 				    &load_state->base,
 				    &vc4_load_tracker_state_funcs);
 
-	return drmm_add_action(&vc4->base, vc4_load_tracker_obj_fini, NULL);
+	return drmm_add_action_or_reset(&vc4->base, vc4_load_tracker_obj_fini, NULL);
 }
 
-#define NUM_OUTPUTS  6
-#define NUM_CHANNELS 3
+static struct drm_private_state *
+vc4_hvs_channels_duplicate_state(struct drm_private_obj *obj)
+{
+	struct vc4_hvs_state *old_state = to_vc4_hvs_state(obj->state);
+	struct vc4_hvs_state *state;
+
+	state = kzalloc(sizeof(*state), GFP_KERNEL);
+	if (!state)
+		return NULL;
 
 /*
  * The BCM2711 HVS has up to 7 output connected to the pixelvalves and
@@ -745,6 +787,8 @@ static int vc4_pv_muxing_atomic_check(struct drm_device *dev,
 	}
 
 	for_each_oldnew_crtc_in_state(state, crtc, old_crtc_state, new_crtc_state, i) {
+		struct vc4_crtc_state *old_vc4_crtc_state =
+			to_vc4_crtc_state(old_crtc_state);
 		struct vc4_crtc_state *new_vc4_crtc_state =
 			to_vc4_crtc_state(new_crtc_state);
 		struct vc4_crtc *vc4_crtc = to_vc4_crtc(crtc);
@@ -786,12 +830,12 @@ static int vc4_pv_muxing_atomic_check(struct drm_device *dev,
 		 * the future, we will need to have something smarter,
 		 * but it works so far.
 		 */
-		matching_channels = unassigned_channels & vc4_crtc->data->hvs_available_channels;
+		matching_channels = hvs_new_state->unassigned_channels & vc4_crtc->data->hvs_available_channels;
 		if (matching_channels) {
 			unsigned int channel = ffs(matching_channels) - 1;
 
 			new_vc4_crtc_state->assigned_channel = channel;
-			unassigned_channels &= ~BIT(channel);
+			hvs_new_state->unassigned_channels &= ~BIT(channel);
 		} else {
 			return -EINVAL;
 		}
@@ -873,6 +917,10 @@ int vc4_kms_load(struct drm_device *dev)
 		return ret;
 
 	ret = vc4_load_tracker_obj_init(vc4);
+	if (ret)
+		return ret;
+
+	ret = vc4_hvs_channels_obj_init(vc4);
 	if (ret)
 		return ret;
 

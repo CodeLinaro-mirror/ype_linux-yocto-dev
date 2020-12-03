@@ -2400,6 +2400,9 @@ static int vc4_hdmi_bind(struct device *dev, struct device *master, void *data)
 		vc4_hdmi->hpd_active_low = hpd_gpio_flags & OF_GPIO_ACTIVE_LOW;
 	}
 
+	vc4_hdmi->disable_wifi_frequencies =
+		of_property_read_bool(dev->of_node, "wifi-2.4ghz-coexistence");
+
 	pm_runtime_enable(dev);
 
 	drm_simple_encoder_init(drm, encoder, DRM_MODE_ENCODER_TMDS);
