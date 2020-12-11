@@ -83,6 +83,9 @@ static bool is_dev_rpm(void *cgxd)
 
 struct mac_ops *cgx_get_mac_ops(void *cgxd)
 {
+	if (!cgxd)
+		return cgxd;
+
 	return ((struct cgx *)cgxd)->mac_ops;
 }
 
