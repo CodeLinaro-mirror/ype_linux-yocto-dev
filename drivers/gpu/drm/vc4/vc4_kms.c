@@ -259,10 +259,7 @@ static void vc5_hvs_pv_muxing_commit(struct vc4_dev *vc4,
 {
 	struct drm_crtc_state *crtc_state;
 	struct drm_crtc *crtc;
-	unsigned char dsp2_mux = 0;
-	unsigned char dsp3_mux = 3;
-	unsigned char dsp4_mux = 3;
-	unsigned char dsp5_mux = 3;
+	unsigned char mux;
 	u32 reg;
 
 	for_each_new_or_current_crtc_state(state, crtc, crtc_state) {
@@ -728,6 +725,49 @@ vc4_hvs_channels_duplicate_state(struct drm_private_obj *obj)
 	if (!state)
 		return NULL;
 
+	__drm_atomic_helper_private_obj_duplicate_state(obj, &state->base);
+
+	state->unassigned_channels = old_state->unassigned_channels;
+
+	return &state->base;
+}
+
+static void vc4_hvs_channels_destroy_state(struct drm_private_obj *obj,
+					   struct drm_private_state *state)
+{
+	struct vc4_hvs_state *hvs_state = to_vc4_hvs_state(state);
+
+	kfree(hvs_state);
+}
+
+static const struct drm_private_state_funcs vc4_hvs_state_funcs = {
+	.atomic_duplicate_state = vc4_hvs_channels_duplicate_state,
+	.atomic_destroy_state = vc4_hvs_channels_destroy_state,
+};
+
+static void vc4_hvs_channels_obj_fini(struct drm_device *dev, void *unused)
+{
+	struct vc4_dev *vc4 = to_vc4_dev(dev);
+
+	drm_atomic_private_obj_fini(&vc4->hvs_channels);
+}
+
+static int vc4_hvs_channels_obj_init(struct vc4_dev *vc4)
+{
+	struct vc4_hvs_state *state;
+
+	state = kzalloc(sizeof(*state), GFP_KERNEL);
+	if (!state)
+		return -ENOMEM;
+
+	state->unassigned_channels = GENMASK(HVS_NUM_CHANNELS - 1, 0);
+	drm_atomic_private_obj_init(&vc4->base, &vc4->hvs_channels,
+				    &state->base,
+				    &vc4_hvs_state_funcs);
+
+	return drmm_add_action_or_reset(&vc4->base, vc4_hvs_channels_obj_fini, NULL);
+}
+
 /*
  * The BCM2711 HVS has up to 7 output connected to the pixelvalves and
  * the TXP (and therefore all the CRTCs found on that platform).
@@ -761,30 +801,15 @@ vc4_hvs_channels_duplicate_state(struct drm_private_obj *obj)
 static int vc4_pv_muxing_atomic_check(struct drm_device *dev,
 				      struct drm_atomic_state *state)
 {
-	unsigned long unassigned_channels = GENMASK(NUM_CHANNELS - 1, 0);
-	struct drm_crtc_state *old_crtc_state, *new_crtc_state;
 	struct vc4_dev *vc4 = to_vc4_dev(state->dev);
-	struct drm_crtc_state *crtc_state;
+	struct vc4_hvs_state *hvs_new_state;
+	struct drm_crtc_state *old_crtc_state, *new_crtc_state;
 	struct drm_crtc *crtc;
 	unsigned int i;
 
-	/*
-	 * Since the HVS FIFOs are shared across all the pixelvalves and
-	 * the TXP (and thus all the CRTCs), we need to pull the current
-	 * state of all the enabled CRTCs so that an update to a single
-	 * CRTC still keeps the previous FIFOs enabled and assigned to
-	 * the same CRTCs, instead of evaluating only the CRTC being
-	 * modified.
-	 */
-	for_each_new_or_current_crtc_state(state, crtc, crtc_state) {
-		struct vc4_crtc_state *vc4_crtc_state;
-
-		if (!crtc_state->enable)
-			continue;
-
-		vc4_crtc_state = to_vc4_crtc_state(crtc_state);
-		unassigned_channels &= ~BIT(vc4_crtc_state->assigned_channel);
-	}
+	hvs_new_state = vc4_hvs_get_global_state(state);
+	if (!hvs_new_state)
+		return -EINVAL;
 
 	for_each_oldnew_crtc_in_state(state, crtc, old_crtc_state, new_crtc_state, i) {
 		struct vc4_crtc_state *old_vc4_crtc_state =
@@ -797,14 +822,19 @@ static int vc4_pv_muxing_atomic_check(struct drm_device *dev,
 		if (vc4->firmware_kms)
 			continue;
 
-		if (old_crtc_state->enable && !new_crtc_state->enable)
+		/* Nothing to do here, let's skip it */
+		if (old_crtc_state->enable == new_crtc_state->enable)
+			continue;
+
+		/* Muxing will need to be modified, mark it as such */
+		new_vc4_crtc_state->update_muxing = true;
+
+		/* If we're disabling our CRTC, we put back our channel */
+		if (!new_crtc_state->enable) {
+			hvs_new_state->unassigned_channels |= BIT(old_vc4_crtc_state->assigned_channel);
 			new_vc4_crtc_state->assigned_channel = VC4_HVS_CHANNEL_DISABLED;
-
-		if (!new_crtc_state->enable)
 			continue;
-
-		if (new_vc4_crtc_state->assigned_channel != VC4_HVS_CHANNEL_DISABLED)
-			continue;
+		}
 
 		/*
 		 * The problem we have to solve here is that we have
