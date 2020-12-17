@@ -999,6 +999,7 @@ void rvu_npc_enable_default_entries(struct rvu *rvu, u16 pcifunc, int nixlf)
 
 void rvu_npc_disable_mcam_entries(struct rvu *rvu, u16 pcifunc, int nixlf)
 {
+	struct rvu_pfvf *pfvf = rvu_get_pfvf(rvu, pcifunc);
 	struct npc_mcam *mcam = &rvu->hw->mcam;
 	struct rvu_npc_mcam_rule *rule, *tmp;
 	int blkaddr;
@@ -1016,6 +1017,12 @@ void rvu_npc_disable_mcam_entries(struct rvu *rvu, u16 pcifunc, int nixlf)
 			npc_enable_mcam_entry(rvu, mcam, blkaddr,
 					      rule->entry, false);
 			rule->enable = false;
+			/* Indicate that default rule is disabled */
+			if (rule->default_rule) {
+				pfvf->def_ucast_rule = NULL;
+				list_del(&rule->list);
+				kfree(rule);
+			}
 		}
 	}
 
