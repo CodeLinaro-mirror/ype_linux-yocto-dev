@@ -33,6 +33,8 @@ enum npc_kpu_la_ltype {
 	NPC_LT_LA_IH_2_ETHER,
 	NPC_LT_LA_HIGIG2_ETHER,
 	NPC_LT_LA_IH_NIX_HIGIG2_ETHER,
+	NPC_LT_LA_CH_LEN_90B_ETHER,
+	NPC_LT_LA_CPT_HDR,
 	NPC_LT_LA_CUSTOM0 = 0xE,
 	NPC_LT_LA_CUSTOM1 = 0xF,
 };
@@ -140,6 +142,22 @@ enum npc_kpu_lh_ltype {
 	NPC_LT_LH_CUSTOM1 = 0xF,
 };
 
+enum npc_pkind_type {
+	NPC_RX_CPT_HDR_PKIND = 58ULL,
+	NPC_RX_CHLEN90B_PKIND,
+	NPC_TX_HIGIG_PKIND,
+	NPC_RX_HIGIG_PKIND,
+	NPC_RX_EDSA_PKIND,
+	NPC_TX_DEF_PKIND,
+};
+
+enum npc_interface_type {
+	NPC_INTF_MODE_DEF,
+	NPC_INTF_MODE_EDSA,
+	NPC_INTF_MODE_HIGIG,
+	NPC_INTF_MODE_FDSA,
+};
+
 struct npc_kpu_profile_cam {
 	u8 state;
 	u8 state_mask;
@@ -149,7 +167,7 @@ struct npc_kpu_profile_cam {
 	u16 dp1_mask;
 	u16 dp2;
 	u16 dp2_mask;
-};
+} __packed;
 
 struct npc_kpu_profile_action {
 	u8 errlev;
@@ -169,13 +187,13 @@ struct npc_kpu_profile_action {
 	u8 mask;
 	u8 right;
 	u8 shift;
-};
+} __packed;
 
 struct npc_kpu_profile {
 	int cam_entries;
 	int action_entries;
-	const struct npc_kpu_profile_cam *cam;
-	const struct npc_kpu_profile_action *action;
+	struct npc_kpu_profile_cam *cam;
+	struct npc_kpu_profile_action *action;
 };
 
 /* NPC KPU register formats */
@@ -297,14 +315,44 @@ struct nix_rx_action {
 #endif
 };
 
+struct nix_tx_action {
+#if defined(__BIG_ENDIAN_BITFIELD)
+	u64	rsvd_63_48	:16;
+	u64	match_id	:16;
+	u64	index		:20;
+	u64	rsvd_11_8	:8;
+	u64	op		:4;
+#else
+	u64	op		:4;
+	u64	rsvd_11_8	:8;
+	u64	index		:20;
+	u64	match_id	:16;
+	u64	rsvd_63_48	:16;
+#endif
+};
+
 /* NPC_AF_INTFX_KEX_CFG field masks */
 #define NPC_PARSE_NIBBLE		GENMASK_ULL(30, 0)
 
 /* NIX Receive Vtag Action Structure */
-#define VTAG0_VALID_BIT		BIT_ULL(15)
-#define VTAG0_TYPE_MASK		GENMASK_ULL(14, 12)
-#define VTAG0_LID_MASK		GENMASK_ULL(10, 8)
-#define VTAG0_RELPTR_MASK	GENMASK_ULL(7, 0)
+#define RX_VTAG0_VALID_BIT		BIT_ULL(15)
+#define RX_VTAG0_TYPE_MASK		GENMASK_ULL(14, 12)
+#define RX_VTAG0_LID_MASK		GENMASK_ULL(10, 8)
+#define RX_VTAG0_RELPTR_MASK		GENMASK_ULL(7, 0)
+#define RX_VTAG1_VALID_BIT		BIT_ULL(47)
+#define RX_VTAG1_TYPE_MASK		GENMASK_ULL(46, 44)
+#define RX_VTAG1_LID_MASK		GENMASK_ULL(42, 40)
+#define RX_VTAG1_RELPTR_MASK		GENMASK_ULL(39, 32)
+
+/* NIX Transmit Vtag Action Structure */
+#define TX_VTAG0_DEF_MASK		GENMASK_ULL(25, 16)
+#define TX_VTAG0_OP_MASK		GENMASK_ULL(13, 12)
+#define TX_VTAG0_LID_MASK		GENMASK_ULL(10, 8)
+#define TX_VTAG0_RELPTR_MASK		GENMASK_ULL(7, 0)
+#define TX_VTAG1_DEF_MASK		GENMASK_ULL(57, 48)
+#define TX_VTAG1_OP_MASK		GENMASK_ULL(45, 44)
+#define TX_VTAG1_LID_MASK		GENMASK_ULL(42, 40)
+#define TX_VTAG1_RELPTR_MASK		GENMASK_ULL(39, 32)
 
 struct npc_mcam_kex {
 	/* MKEX Profle Header */
@@ -322,6 +370,15 @@ struct npc_mcam_kex {
 	u64 intf_lid_lt_ld[NPC_MAX_INTF][NPC_MAX_LID][NPC_MAX_LT][NPC_MAX_LD];
 	/* NPC_AF_INTF(0..1)_LDATA(0..1)_FLAGS(0..15)_CFG */
 	u64 intf_ld_flags[NPC_MAX_INTF][NPC_MAX_LD][NPC_MAX_LFL];
+} __packed;
+
+struct npc_kpu_fwdata {
+	int	entries;
+	/* What follows is:
+	 * struct npc_kpu_profile_cam[entries];
+	 * struct npc_kpu_profile_action[entries];
+	 */
+	u8	data[0];
 } __packed;
 
 struct npc_lt_def {
@@ -355,6 +412,53 @@ struct npc_lt_def_cfg {
 	struct npc_lt_def	pck_oip4;
 	struct npc_lt_def	pck_oip6;
 	struct npc_lt_def	pck_iip4;
+};
+
+/* Loadable KPU profile firmware data */
+struct npc_kpu_profile_fwdata {
+#define KPU_SIGN	0x00666f727075706b
+#define KPU_NAME_LEN	32
+/** Maximum number of custom KPU entries supported by the built-in profile. */
+#define KPU_MAX_CST_ENT	2
+	/* KPU Profle Header */
+	u64	signature; /* "kpuprof\0" (8 bytes/ASCII characters) */
+	u8	name[KPU_NAME_LEN]; /* KPU Profile name */
+	u64	version; /* KPU profile version */
+	u8	kpus;
+	u8	reserved[7];
+
+	/* Default MKEX profile to be used with this KPU profile. May be
+	 * overridden with mkex_profile module parameter. Format is same as for
+	 * the MKEX profile to streamline processing.
+	 */
+	struct npc_mcam_kex	mkex;
+	/* LTYPE values for specific HW offloaded protocols. */
+	struct npc_lt_def_cfg	lt_def;
+	/* Dynamically sized data:
+	 *  Custom KPU CAM and ACTION configuration entries.
+	 * struct npc_kpu_fwdata kpu[kpus];
+	 */
+	u8	data[0];
+} __packed;
+
+struct rvu_npc_mcam_rule {
+	struct flow_msg packet;
+	struct flow_msg mask;
+	u8 intf;
+	union {
+		struct nix_tx_action tx_action;
+		struct nix_rx_action rx_action;
+	};
+	u64 vtag_action;
+	struct list_head list;
+	u64 features;
+	u16 owner;
+	u16 entry;
+	u16 cntr;
+	bool has_cntr;
+	u8 default_rule;
+	bool enable;
+	bool vfvlan_cfg;
 };
 
 #endif /* NPC_H */
