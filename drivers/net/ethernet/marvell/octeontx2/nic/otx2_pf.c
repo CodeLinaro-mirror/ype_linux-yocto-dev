@@ -1682,15 +1682,6 @@ int otx2_open(struct net_device *netdev)
 	if (pf->linfo.link_up && !(pf->pcifunc & RVU_PFVF_FUNC_MASK))
 		otx2_handle_link_event(pf);
 
-	if ((pf->flags & OTX2_FLAG_RX_VLAN_SUPPORT) ||
-	    (pf->flags & OTX2_FLAG_VF_VLAN_SUPPORT)) {
-		if (!(pf->flags & OTX2_FLAG_MCAM_ENTRIES_ALLOC)) {
-			err = otx2_alloc_mcam_entries(pf);
-			if (err)
-				goto err_tx_stop_queues;
-		}
-	}
-
 	/* Restore pause frame settings */
 	otx2_config_pause_frm(pf);
 
@@ -2309,13 +2300,6 @@ static int otx2_get_vf_config(struct net_device *netdev, int vf,
 	return 0;
 }
 
-static netdev_features_t
-otx2_features_check(struct sk_buff *skb, struct net_device *dev,
-		    netdev_features_t features)
-{
-	return features;
-}
-
 static const struct net_device_ops otx2_netdev_ops = {
 	.ndo_open		= otx2_open,
 	.ndo_stop		= otx2_stop,
@@ -2331,7 +2315,6 @@ static const struct net_device_ops otx2_netdev_ops = {
 	.ndo_set_vf_mac		= otx2_set_vf_mac,
 	.ndo_set_vf_vlan	= otx2_set_vf_vlan,
 	.ndo_get_vf_config	= otx2_get_vf_config,
-	.ndo_features_check     = otx2_features_check,
 };
 
 static int otx2_wq_init(struct otx2_nic *pf)
@@ -2531,7 +2514,6 @@ static int otx2_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 			       NETIF_F_IPV6_CSUM | NETIF_F_RXHASH |
 			       NETIF_F_SG | NETIF_F_TSO | NETIF_F_TSO6 |
 			       NETIF_F_GSO_UDP_L4);
-	netdev->features |= netdev->hw_features;
 
 	netdev->hw_features |= NETIF_F_LOOPBACK | NETIF_F_RXALL;
 
@@ -2571,10 +2553,6 @@ static int otx2_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	}
 
 	err = otx2_wq_init(pf);
-	if (err)
-		goto err_unreg_netdev;
-
-	err = otx2_mcam_flow_init(pf);
 	if (err)
 		goto err_unreg_netdev;
 
@@ -2790,7 +2768,6 @@ static void otx2_remove(struct pci_dev *pdev)
 	otx2_sriov_disable(pf->pdev);
 	if (pf->otx2_wq)
 		destroy_workqueue(pf->otx2_wq);
-
 	otx2_ptp_destroy(pf);
 	otx2_mcam_flow_del(pf);
 	otx2_detach_resources(&pf->mbox);
