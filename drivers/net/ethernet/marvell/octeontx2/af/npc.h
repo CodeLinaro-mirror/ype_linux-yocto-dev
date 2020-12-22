@@ -155,7 +155,7 @@ enum npc_pkind_type {
 	NPC_TX_HIGIG_PKIND,
 	NPC_RX_HIGIG_PKIND,
 	NPC_RX_EDSA_PKIND,
-	NPC_TX_DEF_PKIND = 63ULL,	/* NIX-TX PKIND */
+	NPC_TX_DEF_PKIND,	/* NIX-TX PKIND */
 };
 
 enum npc_interface_type {
