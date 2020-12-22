@@ -811,7 +811,6 @@ int rvu_ree_register_interrupts(struct rvu *rvu);
 void rvu_ree_unregister_interrupts(struct rvu *rvu);
 
 /* HW workarounds/fixes */
-#include "npc.h"
 void rvu_nix_txsch_lock(struct nix_hw *nix_hw);
 void rvu_nix_txsch_unlock(struct nix_hw *nix_hw);
 void rvu_nix_update_link_credits(struct rvu *rvu, int blkaddr,

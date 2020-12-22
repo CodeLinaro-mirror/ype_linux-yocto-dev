@@ -14315,7 +14315,10 @@ static struct npc_mcam_kex npc_mkex_default = {
 	/* Default RX MCAM KEX profile */
 	[NIX_INTF_RX] = {
 		[NPC_LID_LA] = {
-			/* Layer A: Ethernet: */
+			/* Layer A: NIX_INST_HDR_S + Ethernet */
+			/* NIX appends 8 bytes of NIX_INST_HDR_S at the
+			 * start of each TX packet supplied to NPC.
+			 */
 			[NPC_LT_LA_ETHER] = {
 				/* DMAC: 6 bytes, KW1[47:0] */
 				KEX_LD_CFG(0x05, 0x0, 0x1, 0x0, NPC_KEXOF_DMAC),
