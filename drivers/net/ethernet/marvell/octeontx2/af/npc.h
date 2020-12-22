@@ -155,7 +155,7 @@ enum npc_pkind_type {
 	NPC_TX_HIGIG_PKIND,
 	NPC_RX_HIGIG_PKIND,
 	NPC_RX_EDSA_PKIND,
-	NPC_TX_DEF_PKIND,
+	NPC_TX_DEF_PKIND,	/* NIX-TX PKIND */
 };
 
 /* list of known and supported fields in packet header and
