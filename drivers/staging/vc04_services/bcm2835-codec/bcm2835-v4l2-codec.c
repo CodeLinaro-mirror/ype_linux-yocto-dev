@@ -1692,6 +1692,17 @@ static int bcm2835_codec_s_ctrl(struct v4l2_ctrl *ctrl)
 						    sizeof(ctrl->val));
 		break;
 
+	case V4L2_CID_MPEG_VIDEO_HEADER_MODE:
+		if (!ctx->component)
+			break;
+
+		ret = vchiq_mmal_port_parameter_set(ctx->dev->instance,
+						    &ctx->component->output[0],
+						    MMAL_PARAMETER_VIDEO_ENCODE_HEADERS_WITH_FRAME,
+						    &ctrl->val,
+						    sizeof(ctrl->val));
+		break;
+
 	case V4L2_CID_MPEG_VIDEO_H264_I_PERIOD:
 		if (!ctx->component)
 			break;
@@ -1769,6 +1780,7 @@ static int vidioc_decoder_cmd(struct file *file, void *priv,
 {
 	struct bcm2835_codec_ctx *ctx = file2ctx(file);
 	struct bcm2835_codec_q_data *q_data = &ctx->q_data[V4L2_M2M_SRC];
+	struct vb2_queue *dst_vq;
 	int ret;
 
 	v4l2_dbg(2, debug, &ctx->dev->v4l2_dev, "%s, cmd %u", __func__,
@@ -1804,7 +1816,9 @@ static int vidioc_decoder_cmd(struct file *file, void *priv,
 		break;
 
 	case V4L2_DEC_CMD_START:
-		/* Do we need to do anything here? */
+		dst_vq = v4l2_m2m_get_vq(ctx->fh.m2m_ctx,
+					 V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE);
+		vb2_clear_last_buffer_dequeued(dst_vq);
 		break;
 
 	default:
@@ -1963,6 +1977,7 @@ static int bcm2835_codec_set_ctrls(struct bcm2835_codec_ctx *ctx)
 	const u32 control_ids[] = {
 		V4L2_CID_MPEG_VIDEO_BITRATE_MODE,
 		V4L2_CID_MPEG_VIDEO_REPEAT_SEQ_HEADER,
+		V4L2_CID_MPEG_VIDEO_HEADER_MODE,
 		V4L2_CID_MPEG_VIDEO_H264_I_PERIOD,
 		V4L2_CID_MPEG_VIDEO_H264_LEVEL,
 		V4L2_CID_MPEG_VIDEO_H264_PROFILE,
@@ -2000,6 +2015,19 @@ static int bcm2835_codec_create_component(struct bcm2835_codec_ctx *ctx)
 	vchiq_mmal_port_parameter_set(dev->instance, &ctx->component->output[0],
 				      MMAL_PARAMETER_ZERO_COPY, &enable,
 				      sizeof(enable));
+
+	if (dev->role == DECODE) {
+		/*
+		 * Disable firmware option that ensures decoded timestamps
+		 * always increase.
+		 */
+		enable = 0;
+		vchiq_mmal_port_parameter_set(dev->instance,
+					      &ctx->component->output[0],
+					      MMAL_PARAMETER_VIDEO_VALIDATE_TIMESTAMPS,
+					      &enable,
+					      sizeof(enable));
+	}
 
 	setup_mmal_port_format(ctx, &ctx->q_data[V4L2_M2M_SRC],
 			       &ctx->component->input[0]);
@@ -2502,7 +2530,7 @@ static int bcm2835_codec_open(struct file *file)
 	hdl = &ctx->hdl;
 	if (dev->role == ENCODE) {
 		/* Encode controls */
-		v4l2_ctrl_handler_init(hdl, 7);
+		v4l2_ctrl_handler_init(hdl, 9);
 
 		v4l2_ctrl_new_std_menu(hdl, &bcm2835_codec_ctrl_ops,
 				       V4L2_CID_MPEG_VIDEO_BITRATE_MODE,
@@ -2512,6 +2540,10 @@ static int bcm2835_codec_open(struct file *file)
 				  V4L2_CID_MPEG_VIDEO_BITRATE,
 				  25 * 1000, 25 * 1000 * 1000,
 				  25 * 1000, 10 * 1000 * 1000);
+		v4l2_ctrl_new_std_menu(hdl, &bcm2835_codec_ctrl_ops,
+				       V4L2_CID_MPEG_VIDEO_HEADER_MODE,
+				       V4L2_MPEG_VIDEO_HEADER_MODE_JOINED_WITH_1ST_FRAME,
+				       0, V4L2_MPEG_VIDEO_HEADER_MODE_JOINED_WITH_1ST_FRAME);
 		v4l2_ctrl_new_std(hdl, &bcm2835_codec_ctrl_ops,
 				  V4L2_CID_MPEG_VIDEO_REPEAT_SEQ_HEADER,
 				  0, 1,
