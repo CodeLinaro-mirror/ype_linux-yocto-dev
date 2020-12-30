@@ -1417,6 +1417,10 @@ static void cgx_lmac_linkup_work(struct work_struct *work)
 		if (err)
 			dev_info(dev, "cgx port %d:%d Link up command failed\n",
 				 cgx->cgx_id, i);
+		/* Disable packet I/O in CGX in case firmware enabled it
+		 * after Link up sequence.
+		 */
+		cgx_lmac_rx_tx_enable(cgx, i, false);
 	}
 }
 
@@ -1585,6 +1589,8 @@ static int cgx_lmac_init(struct cgx *cgx)
 		/* Add reference */
 		cgx->lmac_idmap[lmac->lmac_id] = lmac;
 		cgx->mac_ops->mac_pause_frm_config(cgx, lmac->lmac_id, true);
+		/* Disable packet I/O for a sane state */
+		cgx_lmac_rx_tx_enable(cgx, lmac->lmac_id, false);
 		set_bit(lmac->lmac_id, &cgx->lmac_bmap);
 	}
 
