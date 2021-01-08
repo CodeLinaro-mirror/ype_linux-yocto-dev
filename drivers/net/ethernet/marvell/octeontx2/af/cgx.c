@@ -417,12 +417,6 @@ int cgx_get_pkind(void *cgxd, u8 lmac_id, int *pkind)
 {
 	struct cgx *cgx = cgxd;
 
-	/* flow control configuration logic is changed for RPM.
-	 * Will add the support later
-	 */
-	if (is_dev_rpm(cgx))
-		return 0;
-
 	if (!is_lmac_valid(cgx, lmac_id))
 		return -ENODEV;
 
@@ -526,9 +520,6 @@ void cgx_lmac_enadis_rx_pause_fwding(void *cgxd, int lmac_id, bool enable)
 	u64 cfg;
 
 	/* FIXME add support rx pause forwarding */
-	if (is_dev_rpm(cgx))
-		return;
-
 	if (!cgx)
 		return;
 
@@ -846,12 +837,9 @@ static void cgx_lmac_pause_frm_config(void *cgxd, int lmac_id, bool enable)
 	struct cgx *cgx = cgxd;
 	u64 cfg;
 
-	/* FIXME add support for pause frame */
-	if (is_dev_rpm(cgxd))
-		return;
-
 	if (!is_lmac_valid(cgx, lmac_id))
 		return;
+
 	if (enable) {
 		/* Enable receive pause frames */
 		cfg = cgx_read(cgx, lmac_id, CGXX_SMUX_RX_FRM_CTL);
@@ -1722,7 +1710,8 @@ static int cgx_lmac_exit(struct cgx *cgx)
 static void cgx_populate_features(struct cgx *cgx)
 {
 	if (is_dev_rpm(cgx))
-		cgx->hw_features = RVU_LMAC_FEAT_DMACF | RVU_MAC_RPM;
+		cgx->hw_features = (RVU_LMAC_FEAT_DMACF | RVU_MAC_RPM |
+				    RVU_LMAC_FEAT_FC);
 	else
 		cgx->hw_features = (RVU_LMAC_FEAT_FC  | RVU_LMAC_FEAT_HIGIG2 |
 				    RVU_LMAC_FEAT_PTP | RVU_LMAC_FEAT_DMACF);
