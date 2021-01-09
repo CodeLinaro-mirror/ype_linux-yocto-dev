@@ -1751,13 +1751,11 @@ int rvu_mbox_handler_nix_txsch_alloc(struct rvu *rvu,
 	int link, blkaddr, rc = 0;
 	int lvl, idx, start, end;
 	struct nix_txsch *txsch;
-	struct rvu_pfvf *pfvf;
 	struct nix_hw *nix_hw;
 	u32 *pfvf_map;
 	int nixlf;
 	u16 schq;
 
-	pfvf = rvu_get_pfvf(rvu, pcifunc);
 	rc = nix_get_nixlf(rvu, pcifunc, &nixlf, &blkaddr);
 	if (rc)
 		return rc;
