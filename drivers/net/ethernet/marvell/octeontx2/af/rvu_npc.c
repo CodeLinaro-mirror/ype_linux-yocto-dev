@@ -2499,6 +2499,10 @@ int rvu_mbox_handler_npc_mcam_write_entry(struct rvu *rvu,
 	else
 		nix_intf = pfvf->nix_rx_intf;
 
+	/* For AF installed rules, the nix_intf should be set to target NIX */
+	if (is_pffunc_af(req->hdr.pcifunc))
+		nix_intf = req->intf;
+
 	if (npc_mcam_verify_channel(rvu, pcifunc, req->intf, channel)) {
 		rc = NPC_MCAM_INVALID_REQ;
 		goto exit;
