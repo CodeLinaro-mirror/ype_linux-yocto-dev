@@ -87,6 +87,14 @@ void rvu_cpt_unregister_interrupts(struct rvu *rvu)
 		}
 }
 
+static bool is_cpt_blkaddr(int blkaddr)
+{
+	if (blkaddr != BLKADDR_CPT0 && blkaddr != BLKADDR_CPT1)
+		return false;
+
+	return true;
+}
+
 static bool is_cpt_pf(struct rvu *rvu, u16 pcifunc)
 {
 	int cpt_pf_num = get_cpt_pf_num(rvu);
@@ -254,8 +262,8 @@ int rvu_mbox_handler_cpt_lf_alloc(struct rvu *rvu,
 	u64 val;
 
 	blkaddr = validate_and_get_cpt_blkaddr(req->blkaddr);
-	if (blkaddr < 0)
-		return blkaddr;
+	if (!is_cpt_blkaddr(blkaddr))
+		return -EINVAL;
 
 	if (req->eng_grpmsk == 0x0)
 		return CPT_AF_ERR_GRP_INVALID;
@@ -534,8 +542,8 @@ int rvu_mbox_handler_cpt_rd_wr_register(struct rvu *rvu,
 	int blkaddr;
 
 	blkaddr = validate_and_get_cpt_blkaddr(req->blkaddr);
-	if (blkaddr < 0)
-		return blkaddr;
+	if (!is_cpt_blkaddr(blkaddr))
+		return -EINVAL;
 
 	/* This message is accepted only if sent from CPT PF/VF */
 	if (!is_cpt_pf(rvu, req->hdr.pcifunc) &&
@@ -623,8 +631,8 @@ int rvu_mbox_handler_cpt_sts(struct rvu *rvu, struct cpt_sts_req *req,
 	int blkaddr;
 
 	blkaddr = validate_and_get_cpt_blkaddr(req->blkaddr);
-	if (blkaddr < 0)
-		return blkaddr;
+	if (!is_cpt_blkaddr(blkaddr))
+		return -EINVAL;
 
 	/* This message is accepted only if sent from CPT PF/VF */
 	if (!is_cpt_pf(rvu, req->hdr.pcifunc) &&
@@ -679,8 +687,8 @@ int rvu_mbox_handler_cpt_rxc_time_cfg(struct rvu *rvu,
 	int blkaddr;
 
 	blkaddr = validate_and_get_cpt_blkaddr(req->blkaddr);
-	if (blkaddr < 0)
-		return blkaddr;
+	if (!is_cpt_blkaddr(blkaddr))
+		return -EINVAL;
 
 	/* This message is accepted only if sent from CPT PF/VF */
 	if (!is_cpt_pf(rvu, req->hdr.pcifunc) &&
@@ -762,8 +770,8 @@ int rvu_cpt_lf_teardown(struct rvu *rvu, u16 pcifunc, int lf, int slot)
 	u64 reg;
 
 	blkaddr = rvu_get_blkaddr(rvu, BLKTYPE_CPT, pcifunc);
-	if (blkaddr != BLKADDR_CPT0 && blkaddr != BLKADDR_CPT1)
-		return -EINVAL;
+	if (blkaddr < 0)
+		return blkaddr;
 
 	/* Enable BAR2 ALIAS for this pcifunc. */
 	reg = BIT_ULL(16) | pcifunc;
