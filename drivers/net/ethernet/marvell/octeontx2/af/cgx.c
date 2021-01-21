@@ -1791,14 +1791,6 @@ static int cgx_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		goto err_release_regions;
 	}
 
-	nvec = pci_msix_vec_count(cgx->pdev);
-	err = pci_alloc_irq_vectors(pdev, nvec, nvec, PCI_IRQ_MSIX);
-	if (err < 0 || err != nvec) {
-		dev_err(dev, "Request for %d msix vectors failed, err %d\n",
-			nvec, err);
-		goto err_release_regions;
-	}
-
 	cgx->cgx_id = (pci_resource_start(pdev, PCI_CFG_REG_BAR_NUM) >> 24)
 		& CGX_ID_MASK;
 
@@ -1806,6 +1798,15 @@ static int cgx_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	if (!is_cgx_mapped_to_nix(pdev->subsystem_device, cgx->cgx_id)) {
 		dev_notice(dev, "skip cgx%d probe\n", cgx->cgx_id);
 		err = -ENOMEM;
+		goto err_release_regions;
+	}
+
+	nvec = pci_msix_vec_count(cgx->pdev);
+
+	err = pci_alloc_irq_vectors(pdev, nvec, nvec, PCI_IRQ_MSIX);
+	if (err < 0 || err != nvec) {
+		dev_err(dev, "Request for %d msix vectors failed, err %d\n",
+			nvec, err);
 		goto err_release_regions;
 	}
 
