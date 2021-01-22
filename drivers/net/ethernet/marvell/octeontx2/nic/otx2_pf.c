@@ -1373,7 +1373,8 @@ static int otx2_get_rbuf_size(struct otx2_nic *pf, int mtu)
 	 * memory = frame_size + (headroom + struct skb_shared_info size) * 6;
 	 * each receive buffer size = memory / 6;
 	 */
-	frame_size = mtu + OTX2_ETH_HLEN + OTX2_HW_TIMESTAMP_LEN;
+	frame_size = mtu + OTX2_ETH_HLEN + OTX2_HW_TIMESTAMP_LEN +
+		     pf->addl_mtu + pf->xtra_hdr;
 	total_size = frame_size + (OTX2_HEAD_ROOM +
 		     OTX2_DATA_ALIGN(sizeof(struct skb_shared_info))) * 6;
 	rbuf_size = total_size / 6;
@@ -1386,7 +1387,6 @@ static int otx2_init_hw_resources(struct otx2_nic *pf)
 	struct nix_lf_free_req *free_req;
 	struct mbox *mbox = &pf->mbox;
 	struct otx2_hw *hw = &pf->hw;
-	size_t max_pkt_bytes;
 	struct msg_req *req;
 	int err = 0, lvl;
 
