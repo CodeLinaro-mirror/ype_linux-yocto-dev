@@ -117,8 +117,8 @@ static void otx2_snd_pkt_handler(struct otx2_nic *pfvf,
 	sg->skb = (u64)NULL;
 }
 
-static void otx2_set_rxtstamp(struct otx2_nic *pfvf,
-			      struct sk_buff *skb, void *data)
+static inline void otx2_set_rxtstamp(struct otx2_nic *pfvf,
+				     struct sk_buff *skb, void *data)
 {
 	u64 tsns;
 	int err;
@@ -161,6 +161,24 @@ static void otx2_skb_add_frag(struct otx2_nic *pfvf, struct sk_buff *skb,
 
 	otx2_dma_unmap_page(pfvf, iova - OTX2_HEAD_ROOM,
 			    pfvf->rbsize, DMA_FROM_DEVICE);
+}
+
+static inline void otx2_set_taginfo(struct nix_rx_parse_s *parse,
+				    struct sk_buff *skb)
+{
+	/* Check if VLAN is present, captured and stripped from packet */
+	if (parse->vtag0_valid && parse->vtag0_gone) {
+		skb_frag_t *frag0 = &skb_shinfo(skb)->frags[0];
+
+		/* Is the tag captured STAG or CTAG ? */
+		if (((struct ethhdr *)skb_frag_address(frag0))->h_proto ==
+		    htons(ETH_P_8021Q))
+			__vlan_hwaccel_put_tag(skb, htons(ETH_P_8021AD),
+					       parse->vtag0_tci);
+		else
+			__vlan_hwaccel_put_tag(skb, htons(ETH_P_8021Q),
+					       parse->vtag0_tci);
+	}
 }
 
 static void otx2_set_rxhash(struct otx2_nic *pfvf,
@@ -294,6 +312,8 @@ static void otx2_rcv_pkt_handler(struct otx2_nic *pfvf,
 	skb_record_rx_queue(skb, cq->cq_idx);
 	if (pfvf->netdev->features & NETIF_F_RXCSUM)
 		skb->ip_summed = CHECKSUM_UNNECESSARY;
+
+	otx2_set_taginfo(parse, skb);
 
 	napi_gro_frags(napi);
 }
@@ -809,6 +829,8 @@ static bool is_hw_tso_supported(struct otx2_nic *pfvf,
 	if (!pfvf->hw.hw_tso)
 		return false;
 
+	if (is_dev_post_96xx_C0(pfvf->pdev))
+		return true;
 	/* HW has an issue due to which when the payload of the last LSO
 	 * segment is shorter than 16 bytes, some header fields may not
 	 * be correctly modified, hence don't offload such TSO segments.
