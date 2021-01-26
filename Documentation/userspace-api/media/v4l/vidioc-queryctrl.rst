@@ -468,6 +468,12 @@ See also the examples in :ref:`control`.
       - n/a
       - A struct :c:type:`v4l2_ctrl_fwht_params`, containing FWHT
 	parameters for stateless video decoders.
+    * - ``V4L2_CTRL_TYPE_HDR``
+      - n/a
+      - n/a
+      - n/a
+      - A struct :c:type:`v4l2_metadata_hdr`, containing HDR
+	metadata.
     * - ``V4L2_CTRL_TYPE_HEVC_SPS``
       - n/a
       - n/a

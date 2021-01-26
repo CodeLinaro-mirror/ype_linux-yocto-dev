@@ -4,6 +4,8 @@
 
 #include <asm/irq.h>
 
+#define NR_IPI	16
+
 #define __ARCH_IRQ_EXIT_IRQS_DISABLED	1
 #define ack_bad_irq ack_bad_irq
 
