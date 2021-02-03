@@ -1897,7 +1897,6 @@ out:
 	return addr;
 
 unmap_and_free_vma:
-	fput(vma->vm_file);
 	vma_fput(vma);
 	vma->vm_file = NULL;
 
