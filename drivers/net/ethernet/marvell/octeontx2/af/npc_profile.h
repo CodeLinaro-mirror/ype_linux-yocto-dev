@@ -963,6 +963,24 @@ static struct npc_kpu_profile_action ikpu_action_entries[] = {
 	},
 	{
 		NPC_ERRLEV_RE, NPC_EC_NOERR,
+		102, 106, 110, 0, 0,
+		NPC_S_KPU1_CUSTOM_L2_90B, 0, 0,
+		NPC_LID_LA, NPC_LT_NA,
+		0,
+		0, 0, 0, 0,
+
+	},
+	{
+		NPC_ERRLEV_RE, NPC_EC_NOERR,
+		12, 16, 20, 0, 0,
+		NPC_S_KPU1_ETHER, 0, 0,
+		NPC_LID_LA, NPC_LT_NA,
+		0,
+		0, 0, 0, 0,
+
+	},
+	{
+		NPC_ERRLEV_RE, NPC_EC_NOERR,
 		12, 16, 20, 0, 0,
 		NPC_S_KPU1_ETHER, 0, 0,
 		NPC_LID_LA, NPC_LT_NA,
@@ -981,24 +999,6 @@ static struct npc_kpu_profile_action ikpu_action_entries[] = {
 	},
 	{
 		NPC_ERRLEV_RE, NPC_EC_NOERR,
-		44, 48, 52, 0, 0,
-		NPC_S_KPU1_CPT_HDR, 0, 0,
-		NPC_LID_LA, NPC_LT_NA,
-		0,
-		0, 0, 0, 0,
-
-	},
-	{
-		NPC_ERRLEV_RE, NPC_EC_NOERR,
-		102, 106, 110, 0, 0,
-		NPC_S_KPU1_CUSTOM_L2_90B, 0, 0,
-		NPC_LID_LA, NPC_LT_NA,
-		0,
-		0, 0, 0, 0,
-
-	},
-	{
-		NPC_ERRLEV_RE, NPC_EC_NOERR,
 		12, 16, 20, 0, 0,
 		NPC_S_KPU1_VLAN_EXDSA, 0, 0,
 		NPC_LID_LA, NPC_LT_NA,
@@ -1008,8 +1008,8 @@ static struct npc_kpu_profile_action ikpu_action_entries[] = {
 	},
 	{
 		NPC_ERRLEV_RE, NPC_EC_NOERR,
-		12, 16, 20, 0, 0,
-		NPC_S_KPU1_ETHER, 0, 0,
+		44, 48, 52, 0, 0,
+		NPC_S_KPU1_CPT_HDR, 0, 0,
 		NPC_LID_LA, NPC_LT_NA,
 		0,
 		0, 0, 0, 0,
@@ -14517,6 +14517,14 @@ static struct npc_mcam_kex npc_mkex_default = {
 				/* Ethertype: 2 bytes, KW0[47:32] */
 				KEX_LD_CFG(0x01, 0xc, 0x1, 0x0, 0x4),
 			},
+			/* Layer A: HiGig2: */
+			[NPC_LT_LA_HIGIG2_ETHER] = {
+				/* Classification: 2 bytes, KW1[15:0] */
+				KEX_LD_CFG(0x01, 0x8, 0x1, 0x0, NPC_KEXOF_DMAC),
+				/* VID: 2 bytes, KW1[31:16] */
+				KEX_LD_CFG(0x01, 0xc, 0x1, 0x0,
+					   NPC_KEXOF_DMAC + 2),
+			},
 		},
 		[NPC_LID_LB] = {
 			/* Layer B: Single VLAN (CTAG) */
@@ -14578,6 +14586,13 @@ static struct npc_mcam_kex npc_mkex_default = {
 				KEX_LD_CFG(0x01, 0x0, 0x1, 0x0, 0x4),
 				/* DMAC: 6 bytes, KW1[63:16] */
 				KEX_LD_CFG(0x05, 0x8, 0x1, 0x0, 0xa),
+			},
+			/* Layer A: HiGig2: */
+			[NPC_LT_LA_IH_NIX_HIGIG2_ETHER] = {
+				/* PF_FUNC: 2B , KW0 [47:32] */
+				KEX_LD_CFG(0x01, 0x0, 0x1, 0x0, 0x4),
+				/* VID: 2 bytes, KW1[31:16] */
+				KEX_LD_CFG(0x01, 0x10, 0x1, 0x0, 0xa),
 			},
 		},
 		[NPC_LID_LB] = {
