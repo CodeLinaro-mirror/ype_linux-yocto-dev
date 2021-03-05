@@ -276,8 +276,8 @@ static int otx2_get_sset_count(struct net_device *netdev, int sset)
 	otx2_update_lmac_fec_stats(pfvf);
 
 	return otx2_n_dev_stats + otx2_n_drv_stats + qstats_count +
-	       pfvf->hw.lmac_rx_stats_cnt + pfvf->hw.lmac_tx_stats_cnt + 1 +
-	       OTX2_FEC_STATS_CNT;
+	       pfvf->hw.lmac_rx_stats_cnt + pfvf->hw.lmac_tx_stats_cnt +
+	       OTX2_FEC_STATS_CNT + 1;
 }
 
 /* Get no of queues device supports and current queue count */
@@ -1030,16 +1030,17 @@ static int otx2_get_fecparam(struct net_device *netdev,
 		ETHTOOL_FEC_OFF,
 		ETHTOOL_FEC_BASER,
 		ETHTOOL_FEC_RS,
-		ETHTOOL_FEC_BASER | ETHTOOL_FEC_RS};
-#define FEC_MAX_INDEX 4
-	if (pfvf->linfo.fec < FEC_MAX_INDEX)
+		ETHTOOL_FEC_BASER | ETHTOOL_FEC_RS
+	};
+
+	if (pfvf->linfo.fec < ARRAY_SIZE(fec))
 		fecparam->active_fec = fec[pfvf->linfo.fec];
 
 	rsp = otx2_get_fwdata(pfvf);
 	if (IS_ERR(rsp))
 		return PTR_ERR(rsp);
 
-	if (rsp->fwdata.supported_fec < FEC_MAX_INDEX) {
+	if (rsp->fwdata.supported_fec < ARRAY_SIZE(fec)) {
 		if (!rsp->fwdata.supported_fec)
 			fecparam->fec = ETHTOOL_FEC_NONE;
 		else
@@ -1090,14 +1091,10 @@ static int otx2_set_fecparam(struct net_device *netdev,
 
 	rsp = (struct fec_mode *)otx2_mbox_get_rsp(&pfvf->mbox.mbox,
 						   0, &req->hdr);
-	if (rsp->fec >= 0) {
+	if (rsp->fec >= 0)
 		pfvf->linfo.fec = rsp->fec;
-		pfvf->hw.cgx_fec_corr_blks = 0;
-		pfvf->hw.cgx_fec_uncorr_blks = 0;
-
-	} else {
+	else
 		err = rsp->fec;
-	}
 
 end:
 	mutex_unlock(&mbox->lock);
