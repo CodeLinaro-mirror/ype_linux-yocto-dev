@@ -232,9 +232,6 @@ static void otx2_get_ethtool_stats(struct net_device *netdev,
 		*(data++) = pfvf->hw.cgx_tx_stats[stat];
 	*(data++) = pfvf->reset_count;
 
-	if (pfvf->linfo.fec == OTX2_FEC_NONE)
-		return;
-
 	fec_corr_blks = pfvf->hw.cgx_fec_corr_blks;
 	fec_uncorr_blks = pfvf->hw.cgx_fec_uncorr_blks;
 
@@ -1045,16 +1042,17 @@ static int otx2_get_fecparam(struct net_device *netdev,
 		ETHTOOL_FEC_OFF,
 		ETHTOOL_FEC_BASER,
 		ETHTOOL_FEC_RS,
-		ETHTOOL_FEC_BASER | ETHTOOL_FEC_RS};
+		ETHTOOL_FEC_BASER | ETHTOOL_FEC_RS
+	};
 #define FEC_MAX_INDEX 4
-	if (pfvf->linfo.fec < FEC_MAX_INDEX)
+	if (pfvf->linfo.fec < ARRAY_SIZE(fec))
 		fecparam->active_fec = fec[pfvf->linfo.fec];
 
 	rsp = otx2_get_fwdata(pfvf);
 	if (IS_ERR(rsp))
 		return PTR_ERR(rsp);
 
-	if (rsp->fwdata.supported_fec < FEC_MAX_INDEX) {
+	if (rsp->fwdata.supported_fec < ARRAY_SIZE(fec)) {
 		if (!rsp->fwdata.supported_fec)
 			fecparam->fec = ETHTOOL_FEC_NONE;
 		else
