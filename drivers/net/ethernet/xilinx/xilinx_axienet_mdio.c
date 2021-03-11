@@ -30,23 +30,6 @@ int axienet_mdio_wait_until_ready(struct axienet_local *lp)
 				  1, 20000);
 }
 
-/* Enable the MDIO MDC. Called prior to a read/write operation */
-static void axienet_mdio_mdc_enable(struct axienet_local *lp)
-{
-	axienet_iow(lp, XAE_MDIO_MC_OFFSET,
-		    ((u32)lp->mii_clk_div | XAE_MDIO_MC_MDIOEN_MASK));
-}
-
-/* Disable the MDIO MDC. Called after a read/write operation*/
-static void axienet_mdio_mdc_disable(struct axienet_local *lp)
-{
-	u32 mc_reg;
-
-	mc_reg = axienet_ior(lp, XAE_MDIO_MC_OFFSET);
-	axienet_iow(lp, XAE_MDIO_MC_OFFSET,
-		    (mc_reg & ~XAE_MDIO_MC_MDIOEN_MASK));
-}
-
 /**
  * axienet_mdio_read - MDIO interface read function
  * @bus:	Pointer to mii bus structure
