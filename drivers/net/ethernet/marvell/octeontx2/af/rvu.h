@@ -339,6 +339,8 @@ struct nix_txvlan {
 struct nix_ipolicer {
 	struct rsrc_bmap band_prof;
 	u16 *pfvf_map;
+	u16 *match_id;
+	u16 *ref_count;
 };
 
 struct nix_hw {
@@ -791,6 +793,8 @@ int rvu_get_next_nix_blkaddr(struct rvu *rvu, int blkaddr);
 void rvu_nix_reset_mac(struct rvu_pfvf *pfvf, int pcifunc);
 bool rvu_nix_is_ptp_tx_enabled(struct rvu *rvu, u16 pcifunc);
 int rvu_get_nix_blkaddr(struct rvu *rvu, u16 pcifunc);
+int rvu_nix_setup_ratelimit_aggr(struct rvu *rvu, u16 pcifunc,
+				 u16 rq_idx, u16 match_id);
 
 /* NPC APIs */
 int rvu_npc_init(struct rvu *rvu);
