@@ -336,6 +336,11 @@ struct nix_txvlan {
 	struct mutex rsrc_lock; /* Serialize resource alloc/free */
 };
 
+struct nix_ipolicer {
+	struct rsrc_bmap band_prof;
+	u16 *pfvf_map;
+};
+
 struct nix_hw {
 	int blkaddr;
 	struct rvu *rvu;
@@ -346,6 +351,7 @@ struct nix_hw {
 	struct nix_lso lso;
 	void   *tx_stall;
 	struct nix_txvlan txvlan;
+	struct nix_ipolicer *ipolicer;
 	u64    *tx_credits;
 };
 
@@ -365,6 +371,7 @@ struct hw_cap {
 	bool	nix_rx_multicast;	 /* Rx packet replication support */
 	bool	per_pf_mbox_regs; /* PF mbox specified in per PF registers ? */
 	bool	programmable_chans; /* Channels programmable ? */
+	bool	ipolicer;
 };
 
 struct rvu_hwinfo {
