@@ -170,6 +170,7 @@ M(CGX_MAC_ADDR_DEL,	0x218, cgx_mac_addr_del, cgx_mac_addr_del_req,    \
 				msg_rsp)		\
 M(CGX_MAC_MAX_ENTRIES_GET, 0x219, cgx_mac_max_entries_get, msg_req,    \
 				cgx_max_dmac_entries_get_rsp)		\
+M(CGX_STATS_RST,	0x21A, cgx_stats_rst, msg_req, msg_rsp)		\
 M(CGX_SET_LINK_STATE,	0x220, cgx_set_link_state,    \
 				cgx_set_link_state_msg, msg_rsp)	\
 M(CGX_GET_PHY_MOD_TYPE, 0x221, cgx_get_phy_mod_type, msg_req, \
