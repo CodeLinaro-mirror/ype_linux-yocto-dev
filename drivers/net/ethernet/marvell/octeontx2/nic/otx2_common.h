@@ -386,6 +386,7 @@ struct otx2_nic {
 
 	struct otx2_flow_config	*flow_cfg;
 	struct otx2_tc_info	tc_info;
+	unsigned long		rq_bmap;
 
 #define OTX2_PRIV_FLAG_PAM4			BIT(0)
 #define OTX2_PRIV_FLAG_EDSA_HDR			BIT(1)
