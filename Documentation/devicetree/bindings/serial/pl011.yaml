@@ -19,6 +19,7 @@ select:
       contains:
         enum:
           - arm,pl011
+          - arm,xlnx-sbsa-uart
   required:
     - compatible
 
@@ -30,6 +31,10 @@ properties:
           - const: arm,primecell
       - items:
           - const: arm,primecell
+      - items:
+          - const: arm,xlnx-sbsa-uart
+          - const: arm,primecell
+
 
   reg:
     maxItems: 1

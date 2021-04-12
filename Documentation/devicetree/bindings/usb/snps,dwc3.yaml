@@ -246,6 +246,33 @@ properties:
     minimum: 0
     maximum: 0x3f
 
+  snps,refclk_fladj:
+    description:
+  Enable frame length adjustment for SOF/ITP counter.
+  snps,enable_guctl1_resume_quirk:
+    description:
+      Adding this flag sets bit 10 of GUCTL1
+      thus enabling the workaround in HW to fix the issue where the controller
+      was not able to generate correct CRC checksum on the very first transfer
+      packet after sending resume signal.
+    type: boolean
+
+  snps,enable_guctl1_ipd_quirk:
+    description:
+      Adding this flag sets bit 9 of GUCTL1
+      enabling the workaround in HW to reduce the Inter Packet Delay (IPD)
+      and making controller enumerate FS/LS devices connected behind VIA-LAB.
+    type: boolean
+
+  snps,xhci-stream-quirk:
+    description:
+      Dwc3 host controller has a bug where it sometimes
+      fails to process the traansfer descriptors present in the BULK IN
+      stream ring. Since the controller is not processing any TD, no transfer
+      events will be triggered, resulting in a hang condition. Enabling this
+      flag in dts fixes the above said issue.
+    type: boolean
+
   snps,rx-thr-num-pkt-prd:
     description:
       Periodic ESS RX packet threshold count (host mode only). Set this and
@@ -300,6 +327,11 @@ properties:
     uniqueItems: true
     items:
       enum: [1, 4, 8, 16, 32, 64, 128, 256]
+
+  snps,mask_phy_reset:
+    description:
+       enabling this quirk masks phy reset signal from reaching
+       the ULPI phy after initialization done of the phy.
 
 unevaluatedProperties: false
 

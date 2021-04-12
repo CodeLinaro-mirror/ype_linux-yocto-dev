@@ -19,6 +19,8 @@
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
 
+#include <soc/xilinx/xlnx_vcu.h>
+
 #include <dt-bindings/clock/xlnx-vcu.h>
 
 #define VCU_PLL_CTRL			0x24
@@ -45,37 +47,6 @@
 #define MHZ				1000000
 #define FVCO_MIN			(1500U * MHZ)
 #define FVCO_MAX			(3000U * MHZ)
-
-/**
- * struct xvcu_device - Xilinx VCU init device structure
- * @dev: Platform device
- * @pll_ref: pll ref clock source
- * @aclk: axi clock source
- * @logicore_reg_ba: logicore reg base address
- * @vcu_slcr_ba: vcu_slcr Register base address
- * @pll: handle for the VCU PLL
- * @pll_post: handle for the VCU PLL post divider
- * @clk_data: clocks provided by the vcu clock provider
- */
-struct xvcu_device {
-	struct device *dev;
-	struct clk *pll_ref;
-	struct clk *aclk;
-	struct regmap *logicore_reg_ba;
-	void __iomem *vcu_slcr_ba;
-	struct clk_hw *pll;
-	struct clk_hw *pll_post;
-	struct clk_hw_onecell_data *clk_data;
-};
-
-static struct regmap_config vcu_settings_regmap_config = {
-	.name = "regmap",
-	.reg_bits = 32,
-	.val_bits = 32,
-	.reg_stride = 4,
-	.max_register = 0xfff,
-	.cache_type = REGCACHE_NONE,
-};
 
 /**
  * struct xvcu_pll_cfg - Helper data
@@ -211,6 +182,58 @@ static inline u32 xvcu_read(void __iomem *iomem, u32 offset)
 {
 	return ioread32(iomem + offset);
 }
+
+/**
+ * xvcu_get_color_depth - read the color depth register
+ * @xvcu:	Pointer to the xvcu_device structure
+ *
+ * Return:	Returns 32bit value
+ *
+ */
+u32 xvcu_get_color_depth(struct xvcu_device *xvcu)
+{
+	return xvcu_read(xvcu->logicore_reg_ba, VCU_ENC_COLOR_DEPTH);
+}
+EXPORT_SYMBOL_GPL(xvcu_get_color_depth);
+
+/**
+ * xvcu_get_memory_depth - read the memory depth register
+ * @xvcu:	Pointer to the xvcu_device structure
+ *
+ * Return:	Returns 32bit value
+ *
+ */
+u32 xvcu_get_memory_depth(struct xvcu_device *xvcu)
+{
+	return xvcu_read(xvcu->logicore_reg_ba, VCU_MEMORY_DEPTH);
+}
+EXPORT_SYMBOL_GPL(xvcu_get_memory_depth);
+
+/**
+ * xvcu_get_clock_frequency - provide the core clock frequency
+ * @xvcu:	Pointer to the xvcu_device structure
+ *
+ * Return:	Returns 32bit value
+ *
+ */
+u32 xvcu_get_clock_frequency(struct xvcu_device *xvcu)
+{
+	return xvcu->coreclk;
+}
+EXPORT_SYMBOL_GPL(xvcu_get_clock_frequency);
+
+/**
+ * xvcu_get_num_cores - read the number of core register
+ * @xvcu:	Pointer to the xvcu_device structure
+ *
+ * Return:	Returns 32bit value
+ *
+ */
+u32 xvcu_get_num_cores(struct xvcu_device *xvcu)
+{
+	return xvcu_read(xvcu->logicore_reg_ba, VCU_NUM_CORE);
+}
+EXPORT_SYMBOL_GPL(xvcu_get_num_cores);
 
 /**
  * xvcu_write - Write to the VCU register space
@@ -602,9 +625,8 @@ static void xvcu_unregister_clock_provider(struct xvcu_device *xvcu)
  */
 static int xvcu_probe(struct platform_device *pdev)
 {
-	struct resource *res;
 	struct xvcu_device *xvcu;
-	void __iomem *regs;
+	struct xvcu_device *xvcu_core = dev_get_drvdata(pdev->dev.parent);
 	int ret;
 
 	xvcu = devm_kzalloc(&pdev->dev, sizeof(*xvcu), GFP_KERNEL);
@@ -612,56 +634,14 @@ static int xvcu_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	xvcu->dev = &pdev->dev;
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "vcu_slcr");
-	if (!res) {
-		dev_err(&pdev->dev, "get vcu_slcr memory resource failed.\n");
-		return -ENODEV;
-	}
 
-	xvcu->vcu_slcr_ba = devm_ioremap(&pdev->dev, res->start,
-					 resource_size(res));
-	if (!xvcu->vcu_slcr_ba) {
-		dev_err(&pdev->dev, "vcu_slcr register mapping failed.\n");
-		return -ENOMEM;
-	}
+	xvcu->vcu_slcr_ba = xvcu_core->vcu_slcr_ba;
+	xvcu->logicore_reg_ba = xvcu_core->logicore_reg_ba;
 
-	xvcu->logicore_reg_ba =
-		syscon_regmap_lookup_by_compatible("xlnx,vcu-settings");
-	if (IS_ERR(xvcu->logicore_reg_ba)) {
-		dev_info(&pdev->dev,
-			 "could not find xlnx,vcu-settings: trying direct register access\n");
-
-		res = platform_get_resource_byname(pdev,
-						   IORESOURCE_MEM, "logicore");
-		if (!res) {
-			dev_err(&pdev->dev, "get logicore memory resource failed.\n");
-			return -ENODEV;
-		}
-
-		regs = devm_ioremap(&pdev->dev, res->start, resource_size(res));
-		if (!regs) {
-			dev_err(&pdev->dev, "logicore register mapping failed.\n");
-			return -ENOMEM;
-		}
-
-		xvcu->logicore_reg_ba =
-			devm_regmap_init_mmio(&pdev->dev, regs,
-					      &vcu_settings_regmap_config);
-		if (IS_ERR(xvcu->logicore_reg_ba)) {
-			dev_err(&pdev->dev, "failed to init regmap\n");
-			return PTR_ERR(xvcu->logicore_reg_ba);
-		}
-	}
-
-	xvcu->aclk = devm_clk_get(&pdev->dev, "aclk");
-	if (IS_ERR(xvcu->aclk)) {
-		dev_err(&pdev->dev, "Could not get aclk clock\n");
-		return PTR_ERR(xvcu->aclk);
-	}
-
-	xvcu->pll_ref = devm_clk_get(&pdev->dev, "pll_ref");
+	xvcu->pll_ref = devm_clk_get(pdev->dev.parent, "pll_ref");
 	if (IS_ERR(xvcu->pll_ref)) {
-		dev_err(&pdev->dev, "Could not get pll_ref clock\n");
+		if (PTR_ERR(xvcu->pll_ref) != -EPROBE_DEFER)
+			dev_err(&pdev->dev, "Could not get pll_ref clock\n");
 		return PTR_ERR(xvcu->pll_ref);
 	}
 
@@ -686,16 +666,21 @@ static int xvcu_probe(struct platform_device *pdev)
 
 	dev_set_drvdata(&pdev->dev, xvcu);
 
+	ret = devm_of_platform_populate(pdev->dev.parent);
+	if (ret) {
+		dev_err(&pdev->dev, "Failed to register allegro codecs\n");
+		goto error_pll_ref;
+	}
+
 	return 0;
 
 error_clk_provider:
 	xvcu_unregister_clock_provider(xvcu);
-	clk_disable_unprepare(xvcu->aclk);
 	return ret;
 }
 
 /**
- * xvcu_remove - Insert gasket isolation
+ * xvcu_remove - Depopulate the child nodes, Insert gasket isolation
  *			and disable the clock
  * @pdev:	Pointer to the platform_device structure
  *
@@ -712,25 +697,12 @@ static int xvcu_remove(struct platform_device *pdev)
 
 	xvcu_unregister_clock_provider(xvcu);
 
-	/* Add the Gasket isolation and put the VCU in reset. */
-	regmap_write(xvcu->logicore_reg_ba, VCU_GASKET_INIT, 0);
-
-	clk_disable_unprepare(xvcu->aclk);
-
 	return 0;
 }
-
-static const struct of_device_id xvcu_of_id_table[] = {
-	{ .compatible = "xlnx,vcu" },
-	{ .compatible = "xlnx,vcu-logicoreip-1.0" },
-	{ }
-};
-MODULE_DEVICE_TABLE(of, xvcu_of_id_table);
 
 static struct platform_driver xvcu_driver = {
 	.driver = {
 		.name           = "xilinx-vcu",
-		.of_match_table = xvcu_of_id_table,
 	},
 	.probe                  = xvcu_probe,
 	.remove                 = xvcu_remove,
@@ -741,3 +713,4 @@ module_platform_driver(xvcu_driver);
 MODULE_AUTHOR("Dhaval Shah <dshah@xilinx.com>");
 MODULE_DESCRIPTION("Xilinx VCU init Driver");
 MODULE_LICENSE("GPL v2");
+MODULE_ALIAS("platform:xilinx-vcu");

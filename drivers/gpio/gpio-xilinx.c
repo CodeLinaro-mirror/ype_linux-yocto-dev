@@ -501,6 +501,9 @@ static void xgpio_irqhandler(struct irq_desc *desc)
 	u32 offset = 0, index;
 	u32 status = xgpio_readreg(chip->regs + XGPIO_IPISR_OFFSET);
 
+	if (!chip)
+		return;
+
 	xgpio_writereg(chip->regs + XGPIO_IPISR_OFFSET, status);
 
 	chained_irq_enter(irqchip, desc);

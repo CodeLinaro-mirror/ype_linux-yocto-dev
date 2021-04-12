@@ -2,6 +2,7 @@
 
 config XILINX_VCU
 	tristate "Xilinx VCU logicoreIP Init"
+	select MFD_CORE
 	depends on HAS_IOMEM && COMMON_CLK
 	select REGMAP_MMIO
 	help

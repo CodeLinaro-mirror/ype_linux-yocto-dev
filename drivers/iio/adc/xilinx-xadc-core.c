@@ -1103,23 +1103,23 @@ static const struct iio_chan_spec xadc_7s_channels[] = {
 	XADC_7S_CHAN_VOLTAGE(5, 7, XADC_REG_VCCO_DDR, "vccoddr", true),
 	XADC_7S_CHAN_VOLTAGE(6, 12, XADC_REG_VREFP, "vrefp", false),
 	XADC_7S_CHAN_VOLTAGE(7, 13, XADC_REG_VREFN, "vrefn", false),
-	XADC_7S_CHAN_VOLTAGE(8, 11, XADC_REG_VPVN, NULL, false),
-	XADC_7S_CHAN_VOLTAGE(9, 16, XADC_REG_VAUX(0), NULL, false),
-	XADC_7S_CHAN_VOLTAGE(10, 17, XADC_REG_VAUX(1), NULL, false),
-	XADC_7S_CHAN_VOLTAGE(11, 18, XADC_REG_VAUX(2), NULL, false),
-	XADC_7S_CHAN_VOLTAGE(12, 19, XADC_REG_VAUX(3), NULL, false),
-	XADC_7S_CHAN_VOLTAGE(13, 20, XADC_REG_VAUX(4), NULL, false),
-	XADC_7S_CHAN_VOLTAGE(14, 21, XADC_REG_VAUX(5), NULL, false),
-	XADC_7S_CHAN_VOLTAGE(15, 22, XADC_REG_VAUX(6), NULL, false),
-	XADC_7S_CHAN_VOLTAGE(16, 23, XADC_REG_VAUX(7), NULL, false),
-	XADC_7S_CHAN_VOLTAGE(17, 24, XADC_REG_VAUX(8), NULL, false),
-	XADC_7S_CHAN_VOLTAGE(18, 25, XADC_REG_VAUX(9), NULL, false),
-	XADC_7S_CHAN_VOLTAGE(19, 26, XADC_REG_VAUX(10), NULL, false),
-	XADC_7S_CHAN_VOLTAGE(20, 27, XADC_REG_VAUX(11), NULL, false),
-	XADC_7S_CHAN_VOLTAGE(21, 28, XADC_REG_VAUX(12), NULL, false),
-	XADC_7S_CHAN_VOLTAGE(22, 29, XADC_REG_VAUX(13), NULL, false),
-	XADC_7S_CHAN_VOLTAGE(23, 30, XADC_REG_VAUX(14), NULL, false),
-	XADC_7S_CHAN_VOLTAGE(24, 31, XADC_REG_VAUX(15), NULL, false),
+	XADC_CHAN_VOLTAGE(8, 11, XADC_REG_VPVN, 12, "vpvn", false),
+	XADC_CHAN_VOLTAGE(9, 16, XADC_REG_VAUX(0), 12, "vaux0", false),
+	XADC_CHAN_VOLTAGE(10, 17, XADC_REG_VAUX(1), 12, "vaux1", false),
+	XADC_CHAN_VOLTAGE(11, 18, XADC_REG_VAUX(2), 12, "vaux2", false),
+	XADC_CHAN_VOLTAGE(12, 19, XADC_REG_VAUX(3), 12, "vaux3", false),
+	XADC_CHAN_VOLTAGE(13, 20, XADC_REG_VAUX(4), 12, "vaux4", false),
+	XADC_CHAN_VOLTAGE(14, 21, XADC_REG_VAUX(5), 12, "vaux5", false),
+	XADC_CHAN_VOLTAGE(15, 22, XADC_REG_VAUX(6), 12, "vaux6", false),
+	XADC_CHAN_VOLTAGE(16, 23, XADC_REG_VAUX(7), 12, "vaux7", false),
+	XADC_CHAN_VOLTAGE(17, 24, XADC_REG_VAUX(8), 12, "vaux8", false),
+	XADC_CHAN_VOLTAGE(18, 25, XADC_REG_VAUX(9), 12, "vaux9", false),
+	XADC_CHAN_VOLTAGE(19, 26, XADC_REG_VAUX(10), 12, "vaux10", false),
+	XADC_CHAN_VOLTAGE(20, 27, XADC_REG_VAUX(11), 12, "vaux11", false),
+	XADC_CHAN_VOLTAGE(21, 28, XADC_REG_VAUX(12), 12, "vaux12", false),
+	XADC_CHAN_VOLTAGE(22, 29, XADC_REG_VAUX(13), 12, "vaux13", false),
+	XADC_CHAN_VOLTAGE(23, 30, XADC_REG_VAUX(14), 12, "vaux14", false),
+	XADC_CHAN_VOLTAGE(24, 31, XADC_REG_VAUX(15), 12, "vaux15", false),
 };
 
 /* UltraScale */
@@ -1188,7 +1188,7 @@ static int xadc_parse_dt(struct iio_dev *indio_dev, struct device_node *np,
 	struct device *dev = indio_dev->dev.parent;
 	struct xadc *xadc = iio_priv(indio_dev);
 	const struct iio_chan_spec *channel_templates;
-	struct iio_chan_spec *channels, *chan;
+	struct iio_chan_spec *iio_xadc_channels;
 	struct device_node *chan_node, *child;
 	unsigned int max_channels;
 	unsigned int num_channels;
@@ -1238,13 +1238,12 @@ static int xadc_parse_dt(struct iio_dev *indio_dev, struct device_node *np,
 		channel_templates = xadc_us_channels;
 		max_channels = ARRAY_SIZE(xadc_us_channels);
 	}
-	channels = devm_kmemdup(dev, channel_templates,
-				sizeof(channels[0]) * max_channels, GFP_KERNEL);
-	if (!channels)
+	iio_xadc_channels = devm_kmemdup(dev, channel_templates,
+				sizeof(channel_templates), GFP_KERNEL);
+	if (!iio_xadc_channels)
 		return -ENOMEM;
 
 	num_channels = 9;
-	chan = &channels[9];
 
 	chan_node = of_get_child_by_name(np, "xlnx,channels");
 	if (chan_node) {
@@ -1258,29 +1257,24 @@ static int xadc_parse_dt(struct iio_dev *indio_dev, struct device_node *np,
 			if (ret || reg > 16)
 				continue;
 
-			if (of_property_read_bool(child, "xlnx,bipolar"))
-				chan->scan_type.sign = 's';
+			iio_xadc_channels[num_channels] = channel_templates[reg + 9];
+			iio_xadc_channels[num_channels].channel = num_channels - 1;
 
-			if (reg == 0) {
-				chan->scan_index = 11;
-				chan->address = XADC_REG_VPVN;
-			} else {
-				chan->scan_index = 15 + reg;
-				chan->address = XADC_REG_VAUX(reg - 1);
-			}
+			if (of_property_read_bool(child, "xlnx,bipolar"))
+				iio_xadc_channels[num_channels].scan_type.sign = 's';
+
 			num_channels++;
-			chan++;
 		}
 	}
 	of_node_put(chan_node);
 
 	indio_dev->num_channels = num_channels;
-	indio_dev->channels = devm_krealloc(dev, channels,
-					    sizeof(*channels) * num_channels,
+	indio_dev->channels = devm_krealloc(dev, iio_xadc_channels,
+					    sizeof(*iio_xadc_channels) * num_channels,
 					    GFP_KERNEL);
 	/* If we can't resize the channels array, just use the original */
 	if (!indio_dev->channels)
-		indio_dev->channels = channels;
+		indio_dev->channels = iio_xadc_channels;
 
 	return 0;
 }

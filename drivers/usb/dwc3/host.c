@@ -9,8 +9,15 @@
 
 #include <linux/acpi.h>
 #include <linux/platform_device.h>
+#include <linux/usb/xhci_pdriver.h>
 
 #include "core.h"
+
+void dwc3_host_wakeup_capable(struct device *dev, bool wakeup)
+{
+	dwc3_simple_wakeup_capable(dev, wakeup);
+}
+EXPORT_SYMBOL(dwc3_host_wakeup_capable);
 
 static int dwc3_host_get_irq(struct dwc3 *dwc)
 {
@@ -112,6 +119,24 @@ int dwc3_host_init(struct dwc3 *dwc)
 		if (ret) {
 			dev_err(dwc->dev, "failed to add properties to xHCI\n");
 			goto err;
+		}
+	}
+
+	phy_create_lookup(dwc->usb2_generic_phy, "usb2-phy",
+			  dev_name(dwc->dev));
+	phy_create_lookup(dwc->usb3_generic_phy, "usb3-phy",
+			  dev_name(dwc->dev));
+
+	if (dwc->dr_mode == USB_DR_MODE_OTG) {
+
+		struct usb_phy *phy = usb_get_phy(USB_PHY_TYPE_USB3);
+
+		if (!IS_ERR(phy)) {
+			if (phy && phy->otg)
+				otg_set_host(phy->otg,
+					     (struct usb_bus *)0xdeadbeef);
+
+			usb_put_phy(phy);
 		}
 	}
 
