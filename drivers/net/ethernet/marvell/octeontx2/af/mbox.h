@@ -180,6 +180,9 @@ M(CGX_GET_PHY_MOD_TYPE, 0x21b, cgx_get_phy_mod_type, msg_req, \
 M(CGX_SET_PHY_MOD_TYPE, 0x21c, cgx_set_phy_mod_type, cgx_phy_mod_type,	\
 				msg_rsp) \
 M(CGX_STATS_RST,	0x21d, cgx_stats_rst, msg_req, msg_rsp)		\
+M(CGX_MAC_ADDR_RESET,	0x21e, cgx_mac_addr_reset, msg_req, msg_rsp)	\
+M(CGX_MAC_ADDR_UPDATE,	0x21f, cgx_mac_addr_update, cgx_mac_addr_update_req,    \
+			       msg_rsp)					\
  /* NPA mbox IDs (range 0x400 - 0x5FF) */				\
 /* NPA mbox IDs (range 0x400 - 0x5FF) */				\
 M(NPA_LF_ALLOC,		0x400, npa_lf_alloc,				\
@@ -609,6 +612,12 @@ struct cgx_set_link_state_msg {
 struct cgx_phy_mod_type {
 	struct mbox_msghdr hdr;
 	int mod;
+};
+
+struct cgx_mac_addr_update_req {
+	struct mbox_msghdr hdr;
+	u8 mac_addr[ETH_ALEN];
+	u8 index;
 };
 
 struct sfp_eeprom_s {
