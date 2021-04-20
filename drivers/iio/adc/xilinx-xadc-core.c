@@ -1239,7 +1239,7 @@ static int xadc_parse_dt(struct iio_dev *indio_dev, struct device_node *np,
 		max_channels = ARRAY_SIZE(xadc_us_channels);
 	}
 	iio_xadc_channels = devm_kmemdup(dev, channel_templates,
-				sizeof(channel_templates), GFP_KERNEL);
+				sizeof(iio_xadc_channels[0]) * max_channels, GFP_KERNEL);
 	if (!iio_xadc_channels)
 		return -ENOMEM;
 
