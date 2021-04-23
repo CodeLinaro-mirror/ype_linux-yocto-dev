@@ -234,11 +234,11 @@ static ssize_t rvu_dbg_rsrc_attach_status(struct file *filp,
 					  char __user *buffer,
 					  size_t count, loff_t *ppos)
 {
-	int index, off = 0, flag = 0, go_back = 0, len = 0;
+	int index, off = 0, flag = 0, len = 0, i = 0;
 	struct rvu *rvu = filp->private_data;
+	int bytes_not_copied = 0;
 	int lf, pf, vf, pcifunc;
 	struct rvu_block block;
-	int bytes_not_copied;
 	int lf_str_size = 12;
 	int buf_size = 2048;
 	char *lfs;
@@ -257,6 +257,7 @@ static ssize_t rvu_dbg_rsrc_attach_status(struct file *filp,
 		kfree(buf);
 		return -ENOMEM;
 	}
+
 	off +=	scnprintf(&buf[off], buf_size - 1 - off, "%-*s", lf_str_size,
 			  "pcifunc");
 	for (index = 0; index < BLK_COUNT; index++)
@@ -265,27 +266,35 @@ static ssize_t rvu_dbg_rsrc_attach_status(struct file *filp,
 					 "%-*s", lf_str_size,
 					 rvu->hw->block[index].name);
 		}
+
 	off += scnprintf(&buf[off], buf_size - 1 - off, "\n");
+	bytes_not_copied = copy_to_user(buffer + (i * off), buf, off);
+	if (bytes_not_copied)
+		goto out;
+
+	i++;
+	*ppos += off;
 	for (pf = 0; pf < rvu->hw->total_pfs; pf++) {
 		for (vf = 0; vf <= rvu->hw->total_vfs; vf++) {
+			off = 0;
+			flag = 0;
 			pcifunc = pf << 10 | vf;
 			if (!pcifunc)
 				continue;
 
 			if (vf) {
 				sprintf(lfs, "PF%d:VF%d", pf, vf - 1);
-				go_back = scnprintf(&buf[off],
-						    buf_size - 1 - off,
-						    "%-*s", lf_str_size, lfs);
+				off = scnprintf(&buf[off],
+						buf_size - 1 - off,
+						"%-*s", lf_str_size, lfs);
 			} else {
 				sprintf(lfs, "PF%d", pf);
-				go_back = scnprintf(&buf[off],
-						    buf_size - 1 - off,
-						    "%-*s", lf_str_size, lfs);
+				off = scnprintf(&buf[off],
+						buf_size - 1 - off,
+						"%-*s", lf_str_size, lfs);
 			}
 
-			off += go_back;
-			for (index = 0; index < BLKTYPE_MAX; index++) {
+			for (index = 0; index < BLK_COUNT; index++) {
 				block = rvu->hw->block[index];
 				if (!strlen(block.name))
 					continue;
@@ -298,32 +307,34 @@ static ssize_t rvu_dbg_rsrc_attach_status(struct file *filp,
 					len += sprintf(&lfs[len], "%d,", lf);
 				}
 
-				if (flag)
+				if (flag && len)
 					len--;
 				lfs[len] = '\0';
 				off += scnprintf(&buf[off], buf_size - 1 - off,
 						 "%-*s", lf_str_size, lfs);
-				if (!strlen(lfs))
-					go_back += lf_str_size;
 			}
-			if (!flag)
-				off -= go_back;
-			else
-				flag = 0;
-			off--;
-			off +=	scnprintf(&buf[off], buf_size - 1 - off, "\n");
+			if (flag) {
+				off +=	scnprintf(&buf[off],
+						  buf_size - 1 - off, "\n");
+				bytes_not_copied = copy_to_user(buffer +
+								(i * off),
+								buf, off);
+				if (bytes_not_copied)
+					goto out;
+
+				i++;
+				*ppos += off;
+			}
 		}
 	}
 
-	bytes_not_copied = copy_to_user(buffer, buf, off);
+out:
 	kfree(lfs);
 	kfree(buf);
-
 	if (bytes_not_copied)
 		return -EFAULT;
 
-	*ppos = off;
-	return off;
+	return *ppos;
 }
 
 RVU_DEBUG_FOPS(rsrc_status, rsrc_attach_status, NULL);
@@ -2848,74 +2859,34 @@ RVU_DEBUG_FOPS(sso_hws_info, NULL, sso_hws_info_display);
 
 static void rvu_dbg_sso_init(struct rvu *rvu)
 {
-	const struct device *dev = &rvu->pdev->dev;
-	struct dentry *pfile;
-
 	rvu->rvu_dbg.sso = debugfs_create_dir("sso", rvu->rvu_dbg.root);
-	if (!rvu->rvu_dbg.sso)
-		return;
-
 	rvu->rvu_dbg.sso_hwgrp = debugfs_create_dir("hwgrp", rvu->rvu_dbg.sso);
-	if (!rvu->rvu_dbg.sso_hwgrp)
-		return;
-
 	rvu->rvu_dbg.sso_hws = debugfs_create_dir("hws", rvu->rvu_dbg.sso);
-	if (!rvu->rvu_dbg.sso_hws)
-		return;
 
-	pfile = debugfs_create_file("sso_pc", 0600,
-				    rvu->rvu_dbg.sso, rvu,
-			&rvu_dbg_sso_pc_fops);
-	if (!pfile)
-		goto create_failed;
+	debugfs_create_file("sso_pc", 0600, rvu->rvu_dbg.sso, rvu,
+			    &rvu_dbg_sso_pc_fops);
 
-	pfile = debugfs_create_file("sso_hwgrp_pc", 0600,
-				    rvu->rvu_dbg.sso_hwgrp, rvu,
-			&rvu_dbg_sso_hwgrp_pc_fops);
-	if (!pfile)
-		goto create_failed;
+	debugfs_create_file("sso_hwgrp_pc", 0600, rvu->rvu_dbg.sso_hwgrp,
+			    rvu, &rvu_dbg_sso_hwgrp_pc_fops);
 
-	pfile = debugfs_create_file("sso_hwgrp_thresh", 0600,
-				    rvu->rvu_dbg.sso_hwgrp, rvu,
-			&rvu_dbg_sso_hwgrp_thresh_fops);
-	if (!pfile)
-		goto create_failed;
+	debugfs_create_file("sso_hwgrp_thresh", 0600, rvu->rvu_dbg.sso_hwgrp,
+			    rvu, &rvu_dbg_sso_hwgrp_thresh_fops);
 
-	pfile = debugfs_create_file("sso_hwgrp_taq_walk", 0600,
-				    rvu->rvu_dbg.sso_hwgrp, rvu,
-			&rvu_dbg_sso_hwgrp_taq_wlk_fops);
-	if (!pfile)
-		goto create_failed;
+	debugfs_create_file("sso_hwgrp_taq_walk", 0600, rvu->rvu_dbg.sso_hwgrp,
+			    rvu, &rvu_dbg_sso_hwgrp_taq_wlk_fops);
 
-	pfile = debugfs_create_file("sso_hwgrp_iaq_walk", 0600,
-				    rvu->rvu_dbg.sso_hwgrp, rvu,
-			&rvu_dbg_sso_hwgrp_iaq_wlk_fops);
-	if (!pfile)
-		goto create_failed;
+	debugfs_create_file("sso_hwgrp_iaq_walk", 0600, rvu->rvu_dbg.sso_hwgrp,
+			    rvu, &rvu_dbg_sso_hwgrp_iaq_wlk_fops);
 
-	pfile = debugfs_create_file("sso_hwgrp_ient_walk", 0600,
-				    rvu->rvu_dbg.sso_hwgrp, rvu,
-			&rvu_dbg_sso_hwgrp_ient_wlk_fops);
-	if (!pfile)
-		goto create_failed;
+	debugfs_create_file("sso_hwgrp_ient_walk", 0600, rvu->rvu_dbg.sso_hwgrp,
+			    rvu, &rvu_dbg_sso_hwgrp_ient_wlk_fops);
 
-	pfile = debugfs_create_file("sso_hwgrp_free_list_walk", 0600,
-				    rvu->rvu_dbg.sso_hwgrp, rvu,
-			&rvu_dbg_sso_hwgrp_fl_wlk_fops);
-	if (!pfile)
-		goto create_failed;
+	debugfs_create_file("sso_hwgrp_free_list_walk", 0600,
+			    rvu->rvu_dbg.sso_hwgrp, rvu,
+			    &rvu_dbg_sso_hwgrp_fl_wlk_fops);
 
-	pfile = debugfs_create_file("sso_hws_info", 0600,
-				    rvu->rvu_dbg.sso_hws, rvu,
-			&rvu_dbg_sso_hws_info_fops);
-	if (!pfile)
-		goto create_failed;
-
-	return;
-
-create_failed:
-	dev_err(dev, "Failed to create debugfs dir/file for SSO\n");
-	debugfs_remove_recursive(rvu->rvu_dbg.sso);
+	debugfs_create_file("sso_hws_info", 0600, rvu->rvu_dbg.sso_hws,
+			    rvu, &rvu_dbg_sso_hws_info_fops);
 }
 
 static int cpt_eng_sts_display(struct seq_file *filp, u8 eng_type)
