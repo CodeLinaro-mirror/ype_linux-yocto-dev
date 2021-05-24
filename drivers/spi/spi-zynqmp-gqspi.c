@@ -955,8 +955,14 @@ static void zynqmp_qspi_write_op(struct zynqmp_qspi *xqspi, u8 tx_nbits,
 static int zynqmp_qspi_read_op(struct zynqmp_qspi *xqspi, u8 rx_nbits,
 				u32 genfifoentry)
 {
-	zynqmp_qspi_setuprxdma(xqspi);
+	int ret;
+
+	ret = zynqmp_qspi_setuprxdma(xqspi);
+	if (ret)
+		return ret;
 	zynqmp_qspi_fillgenfifo(xqspi, rx_nbits, genfifoentry);
+
+	return 0;
 }
 
 /**
