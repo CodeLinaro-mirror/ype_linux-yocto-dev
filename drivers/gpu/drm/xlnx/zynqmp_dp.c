@@ -905,7 +905,7 @@ static int zynqmp_dp_train(struct zynqmp_dp *dp)
 	if (ret < 0)
 		return ret;
 
-	zynqmp_dp_write(dp, ZYNQMP_DP_SCRAMBLING_DISABLE, 1);
+	zynqmp_dp_write(dp, ZYNQMP_DP_TX_SCRAMBLING_DISABLE, 1);
 	memset(dp->train_set, 0, sizeof(dp->train_set));
 	ret = zynqmp_dp_link_train_cr(dp);
 	if (ret)
