@@ -793,7 +793,7 @@ static int zynq_qspi_probe(struct platform_device *pdev)
 	if (ret != 0) {
 		ret = -ENXIO;
 		dev_err(&pdev->dev, "request_irq failed\n");
-		goto remove_master;
+		goto clk_dis_all;
 	}
 
 	ret = of_property_read_u32(pdev->dev.of_node, "num-cs",
@@ -801,8 +801,9 @@ static int zynq_qspi_probe(struct platform_device *pdev)
 	if (ret < 0) {
 		ctlr->num_chipselect = 1;
 	} else if (num_cs > ZYNQ_QSPI_MAX_NUM_CS) {
+		ret = -EINVAL;
 		dev_err(&pdev->dev, "only 2 chip selects are available\n");
-		goto remove_master;
+		goto clk_dis_all;
 	} else {
 		ctlr->num_chipselect = num_cs;
 	}
