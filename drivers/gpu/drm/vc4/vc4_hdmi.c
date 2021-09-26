@@ -80,6 +80,9 @@
 #define VC5_HDMI_VERTB_VSPO_SHIFT		16
 #define VC5_HDMI_VERTB_VSPO_MASK		VC4_MASK(29, 16)
 
+#define VC5_HDMI_MISC_CONTROL_PIXEL_REP_SHIFT	0
+#define VC5_HDMI_MISC_CONTROL_PIXEL_REP_MASK	VC4_MASK(3, 0)
+
 #define VC5_HDMI_SCRAMBLER_CTL_ENABLE		BIT(0)
 
 #define VC5_HDMI_DEEP_COLOR_CONFIG_1_INIT_PACK_PHASE_SHIFT	8
@@ -96,6 +99,7 @@
 # define VC4_HD_M_SW_RST			BIT(2)
 # define VC4_HD_M_ENABLE			BIT(0)
 
+#define HSM_MIN_CLOCK_FREQ	120000000
 #define CEC_CLOCK_FREQ 40000
 
 #define HDMI_14_MAX_TMDS_CLK   (340 * 1000 * 1000)
@@ -181,8 +185,6 @@ vc4_hdmi_connector_detect(struct drm_connector *connector, bool force)
 
 	if (vc4_hdmi->hpd_gpio &&
 	    gpiod_get_value_cansleep(vc4_hdmi->hpd_gpio)) {
-		connected = true;
-	} else if (drm_probe_ddc(vc4_hdmi->ddc)) {
 		connected = true;
 	} else if (HDMI_READ(HDMI_HOTPLUG) & VC4_HDMI_HOTPLUG_CONNECTED) {
 		connected = true;
@@ -659,7 +661,6 @@ static void vc4_hdmi_encoder_post_crtc_powerdown(struct drm_encoder *encoder,
 	clk_disable_unprepare(vc4_hdmi->pixel_bvb_clock);
 	if (vc4_hdmi->bvb_req)
 		clk_request_done(vc4_hdmi->bvb_req);
-	clk_disable_unprepare(vc4_hdmi->hsm_clock);
 	clk_request_done(vc4_hdmi->hsm_req);
 	clk_disable_unprepare(vc4_hdmi->pixel_clock);
 
@@ -874,6 +875,11 @@ static void vc5_hdmi_set_timings(struct vc4_hdmi *vc4_hdmi,
 	reg |= gcp_en ? VC5_HDMI_GCP_CONFIG_GCP_ENABLE : 0;
 	HDMI_WRITE(HDMI_GCP_CONFIG, reg);
 
+	reg = HDMI_READ(HDMI_MISC_CONTROL);
+	reg &= ~VC5_HDMI_MISC_CONTROL_PIXEL_REP_MASK;
+	reg |= VC4_SET_FIELD(0, VC5_HDMI_MISC_CONTROL_PIXEL_REP);
+	HDMI_WRITE(HDMI_MISC_CONTROL, reg);
+
 	HDMI_WRITE(HDMI_CLOCK_STOP, 0);
 }
 
@@ -917,7 +923,6 @@ static void vc4_hdmi_encoder_pre_crtc_configure(struct drm_encoder *encoder,
 	ret = pm_runtime_resume_and_get(&vc4_hdmi->pdev->dev);
 	if (ret < 0) {
 		DRM_ERROR("Failed to retain power domain: %d\n", ret);
-		pm_runtime_put(&vc4_hdmi->pdev->dev);
 		return;
 	}
 
@@ -925,24 +930,20 @@ static void vc4_hdmi_encoder_pre_crtc_configure(struct drm_encoder *encoder,
 	ret = clk_set_rate(vc4_hdmi->pixel_clock, pixel_rate);
 	if (ret) {
 		DRM_ERROR("Failed to set pixel clock rate: %d\n", ret);
-		pm_runtime_put(&vc4_hdmi->pdev->dev);
-		return;
+		goto err_runtime_pm;
 	}
 
 	ret = clk_prepare_enable(vc4_hdmi->pixel_clock);
 	if (ret) {
 		DRM_ERROR("Failed to turn on pixel clock: %d\n", ret);
-		pm_runtime_put(&vc4_hdmi->pdev->dev);
-		return;
+		goto err_runtime_pm;
 	}
 
 	hsm_rate = vc4_hdmi->variant->calc_hsm_clock(vc4_hdmi, pixel_rate);
 	vc4_hdmi->hsm_req = clk_request_start(vc4_hdmi->hsm_clock, hsm_rate);
 	if (IS_ERR(vc4_hdmi->hsm_req)) {
 		DRM_ERROR("Failed to set HSM clock rate: %ld\n", PTR_ERR(vc4_hdmi->hsm_req));
-		clk_disable_unprepare(vc4_hdmi->pixel_clock);
-		pm_runtime_put(&vc4_hdmi->pdev->dev);
-		return;
+		goto err_disable_pixel_clk;
 	}
 
 	vc4_hdmi_cec_update_clk_div(vc4_hdmi);
@@ -958,23 +959,13 @@ static void vc4_hdmi_encoder_pre_crtc_configure(struct drm_encoder *encoder,
 		vc4_hdmi->bvb_req = clk_request_start(vc4_hdmi->pixel_bvb_clock, bvb_rate);
 	if (IS_ERR(vc4_hdmi->bvb_req)) {
 		DRM_ERROR("Failed to set pixel bvb clock rate: %ld\n", PTR_ERR(vc4_hdmi->bvb_req));
-		clk_request_done(vc4_hdmi->hsm_req);
-		clk_disable_unprepare(vc4_hdmi->hsm_clock);
-		clk_disable_unprepare(vc4_hdmi->pixel_clock);
-		pm_runtime_put(&vc4_hdmi->pdev->dev);
-		return;
+		goto err_remove_hsm_req;
 	}
 
 	ret = clk_prepare_enable(vc4_hdmi->pixel_bvb_clock);
 	if (ret) {
 		DRM_ERROR("Failed to turn on pixel bvb clock: %d\n", ret);
-		if (vc4_hdmi->bvb_req)
-			clk_request_done(vc4_hdmi->bvb_req);
-		clk_request_done(vc4_hdmi->hsm_req);
-		clk_disable_unprepare(vc4_hdmi->hsm_clock);
-		clk_disable_unprepare(vc4_hdmi->pixel_clock);
-		pm_runtime_put(&vc4_hdmi->pdev->dev);
-		return;
+		goto err_remove_bvb_req;
 	}
 
 	if (vc4_hdmi->variant->phy_init)
@@ -987,6 +978,19 @@ static void vc4_hdmi_encoder_pre_crtc_configure(struct drm_encoder *encoder,
 
 	if (vc4_hdmi->variant->set_timings)
 		vc4_hdmi->variant->set_timings(vc4_hdmi, conn_state, mode);
+
+	return;
+
+err_remove_bvb_req:
+	if (vc4_hdmi->bvb_req)
+		clk_request_done(vc4_hdmi->bvb_req);
+err_remove_hsm_req:
+	clk_request_done(vc4_hdmi->hsm_req);
+err_disable_pixel_clk:
+	clk_disable_unprepare(vc4_hdmi->pixel_clock);
+err_runtime_pm:
+	pm_runtime_put(&vc4_hdmi->pdev->dev);
+	return;
 }
 
 static void vc4_hdmi_encoder_pre_crtc_enable(struct drm_encoder *encoder,
@@ -1190,7 +1194,7 @@ static u32 vc5_hdmi_calc_hsm_clock(struct vc4_hdmi *vc4_hdmi, unsigned long pixe
 	 * pixel clock, but HSM ends up being the limiting factor.
 	 */
 
-	return max_t(unsigned long, 120000000, (pixel_rate / 100) * 101);
+	return max_t(unsigned long, HSM_MIN_CLOCK_FREQ, (pixel_rate / 100) * 101);
 }
 
 static u32 vc4_hdmi_channel_map(struct vc4_hdmi *vc4_hdmi, u32 channel_mask)
@@ -1436,89 +1440,6 @@ static int vc4_hdmi_audio_prepare(struct device *dev, void *data,
 
 	return 0;
 }
-
-static int vc4_hdmi_audio_trigger(struct snd_pcm_substream *substream, int cmd,
-				  struct snd_soc_dai *dai)
-{
-	struct vc4_hdmi *vc4_hdmi = dai_to_hdmi(dai);
-
-	switch (cmd) {
-	case SNDRV_PCM_TRIGGER_START:
-		vc4_hdmi->audio.streaming = true;
-
-		if (vc4_hdmi->variant->phy_rng_enable)
-			vc4_hdmi->variant->phy_rng_enable(vc4_hdmi);
-
-		HDMI_WRITE(HDMI_MAI_CTL,
-			   VC4_SET_FIELD(vc4_hdmi->audio.channels,
-					 VC4_HD_MAI_CTL_CHNUM) |
-					 VC4_HD_MAI_CTL_WHOLSMP |
-					 VC4_HD_MAI_CTL_CHALIGN |
-					 VC4_HD_MAI_CTL_ENABLE);
-		break;
-	case SNDRV_PCM_TRIGGER_STOP:
-		HDMI_WRITE(HDMI_MAI_CTL,
-			   VC4_HD_MAI_CTL_DLATE |
-			   VC4_HD_MAI_CTL_ERRORE |
-			   VC4_HD_MAI_CTL_ERRORF);
-
-		if (vc4_hdmi->variant->phy_rng_disable)
-			vc4_hdmi->variant->phy_rng_disable(vc4_hdmi);
-
-		vc4_hdmi->audio.streaming = false;
-
-		break;
-	default:
-		break;
-	}
-
-	return 0;
-}
-
-static inline struct vc4_hdmi *
-snd_component_to_hdmi(struct snd_soc_component *component)
-{
-	struct snd_soc_card *card = snd_soc_component_get_drvdata(component);
-
-	return snd_soc_card_get_drvdata(card);
-}
-
-static int vc4_hdmi_audio_eld_ctl_info(struct snd_kcontrol *kcontrol,
-				       struct snd_ctl_elem_info *uinfo)
-{
-	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
-	struct vc4_hdmi *vc4_hdmi = snd_component_to_hdmi(component);
-	struct drm_connector *connector = &vc4_hdmi->connector;
-
-	uinfo->type = SNDRV_CTL_ELEM_TYPE_BYTES;
-	uinfo->count = sizeof(connector->eld);
-
-	return 0;
-}
-
-static int vc4_hdmi_audio_eld_ctl_get(struct snd_kcontrol *kcontrol,
-				      struct snd_ctl_elem_value *ucontrol)
-{
-	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
-	struct vc4_hdmi *vc4_hdmi = snd_component_to_hdmi(component);
-	struct drm_connector *connector = &vc4_hdmi->connector;
-
-	memcpy(ucontrol->value.bytes.data, connector->eld,
-	       sizeof(connector->eld));
-
-	return 0;
-}
-
-static const struct snd_kcontrol_new vc4_hdmi_audio_controls[] = {
-	{
-		.access = SNDRV_CTL_ELEM_ACCESS_READ |
-			  SNDRV_CTL_ELEM_ACCESS_VOLATILE,
-		.iface = SNDRV_CTL_ELEM_IFACE_PCM,
-		.name = "ELD",
-		.info = vc4_hdmi_audio_eld_ctl_info,
-		.get = vc4_hdmi_audio_eld_ctl_get,
-	},
-};
 
 static const struct snd_soc_dapm_widget vc4_hdmi_audio_widgets[] = {
 	SND_SOC_DAPM_OUTPUT("TX"),
@@ -2396,6 +2317,44 @@ static int vc4_hdmi_bind(struct device *dev, struct device *master, void *data)
 			vc4_hdmi->disable_4kp60 = true;
 	}
 
+	/*
+	 * If we boot without any cable connected to the HDMI connector,
+	 * the firmware will skip the HSM initialization and leave it
+	 * with a rate of 0, resulting in a bus lockup when we're
+	 * accessing the registers even if it's enabled.
+	 *
+	 * Let's put a sensible default at runtime_resume so that we
+	 * don't end up in this situation.
+	 *
+	 * Strictly speaking we should be using clk_set_min_rate.
+	 * However, the clk-bcm2835 clock driver favors clock rates
+	 * under the expected rate, which in the case where we set the
+	 * minimum clock rate will be rejected by the clock framework.
+	 *
+	 * However, even for the two HDMI controllers found on the
+	 * BCM2711, using clk_set_rate doesn't cause any issue. Indeed,
+	 * the bind callbacks are called in sequence, and before the DRM
+	 * device is registered and therefore a mode is set. As such,
+	 * we're not at risk of having the first controller set a
+	 * different mode and then the second overriding the HSM clock
+	 * frequency in its bind.
+	 */
+	ret = clk_set_rate(vc4_hdmi->hsm_clock, HSM_MIN_CLOCK_FREQ);
+	if (ret)
+		goto err_put_ddc;
+
+	/*
+	 * We need to have the device powered up at this point to call
+	 * our reset hook and for the CEC init.
+	 */
+	ret = vc4_hdmi_runtime_resume(dev);
+	if (ret)
+		goto err_put_ddc;
+
+	pm_runtime_get_noresume(dev);
+	pm_runtime_set_active(dev);
+	pm_runtime_enable(dev);
+
 	if (vc4_hdmi->variant->reset)
 		vc4_hdmi->variant->reset(vc4_hdmi);
 
@@ -2406,8 +2365,6 @@ static int vc4_hdmi_bind(struct device *dev, struct device *master, void *data)
 		clk_prepare_enable(vc4_hdmi->hsm_clock);
 		clk_prepare_enable(vc4_hdmi->pixel_bvb_clock);
 	}
-
-	pm_runtime_enable(dev);
 
 	drm_simple_encoder_init(drm, encoder, DRM_MODE_ENCODER_TMDS);
 	drm_encoder_helper_add(encoder, &vc4_hdmi_encoder_helper_funcs);
@@ -2432,6 +2389,8 @@ static int vc4_hdmi_bind(struct device *dev, struct device *master, void *data)
 			     vc4_hdmi_debugfs_regs,
 			     vc4_hdmi);
 
+	pm_runtime_put_sync(dev);
+
 	return 0;
 
 err_free_cec:
@@ -2442,6 +2401,7 @@ err_destroy_conn:
 	vc4_hdmi_connector_destroy(&vc4_hdmi->connector);
 err_destroy_encoder:
 	drm_encoder_cleanup(encoder);
+	pm_runtime_put_sync(dev);
 	pm_runtime_disable(dev);
 err_put_ddc:
 	put_device(&vc4_hdmi->ddc->dev);
