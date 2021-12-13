@@ -289,6 +289,12 @@ static inline int room_on_ring(struct xhci_hcd *xhci, struct xhci_ring *ring,
 		return 0;
 
 	if (ring->type != TYPE_COMMAND && ring->type != TYPE_EVENT) {
+		/*
+		 * If the ring has a single segment the dequeue segment
+		 * never changes, so don't use it as measure of free space.
+		 */
+		if (ring->num_segs == 1)
+			return ring->num_trbs_free >= num_trbs;
 		num_trbs_in_deq_seg = ring->dequeue - ring->deq_seg->trbs;
 		if (ring->num_trbs_free < num_trbs + num_trbs_in_deq_seg)
 			return 0;
@@ -667,6 +673,15 @@ static int xhci_move_dequeue_past_td(struct xhci_hcd *xhci,
 	} while (!cycle_found || !td_last_trb_found);
 
 deq_found:
+	/*
+	 * Quirk: the xHC does not correctly parse link TRBs if the HW Dequeue
+	 * pointer is set to one. Advance to the next TRB (and next segment).
+	 */
+	if (xhci->quirks & XHCI_AVOID_DQ_ON_LINK && trb_is_link(new_deq)) {
+		if (link_trb_toggles_cycle(new_deq))
+			new_cycle ^= 0x1;
+		next_trb(xhci, ep_ring, &new_seg, &new_deq);
+	}
 
 	/* Don't update the ring cycle state for the producer (us). */
 	addr = xhci_trb_virt_to_dma(new_seg, new_deq);
@@ -677,9 +692,9 @@ deq_found:
 	}
 
 	if ((ep->ep_state & SET_DEQ_PENDING)) {
-		xhci_warn(xhci, "Set TR Deq already pending, don't submit for 0x%pad\n",
-			  &addr);
-		return -EBUSY;
+		xhci_warn(xhci, "WARN A Set TR Deq Ptr command is pending for slot %u ep %u\n",
+			  slot_id, ep_index);
+		ep->ep_state &= ~SET_DEQ_PENDING;
 	}
 
 	/* This function gets called from contexts where it cannot sleep */
