@@ -312,6 +312,7 @@ err_out:
 
 	/* BUG_ON due to failure in allocation of orig_mask/mask */
 	BUG_ON(-1);
+	return NULL;
 }
 
 static cpu_set_t *bind_to_node(int target_node)
@@ -365,6 +366,7 @@ err_out:
 
 	/* BUG_ON due to failure in allocation of orig_mask/mask */
 	BUG_ON(-1);
+	return NULL;
 }
 
 static void bind_to_cpumask(cpu_set_t *mask)
