@@ -489,6 +489,7 @@ void mnt_put_write_access_file(struct file *file)
 	if (!(file->f_mode & FMODE_WRITER))
 		mnt_put_write_access(file->f_path.mnt);
 }
+EXPORT_SYMBOL_GPL(__mnt_drop_write);
 
 void mnt_drop_write_file(struct file *file)
 {
@@ -879,6 +880,7 @@ int is_current_mnt_ns(struct vfsmount *mnt)
 {
 	return check_mnt(real_mount(mnt));
 }
+EXPORT_SYMBOL_GPL(is_current_mnt_ns);
 
 /*
  * vfsmount lock must be held for write
@@ -2154,6 +2156,7 @@ int iterate_mounts(int (*f)(struct vfsmount *, void *), void *arg,
 	}
 	return 0;
 }
+EXPORT_SYMBOL_GPL(iterate_mounts);
 
 static void lock_mnt_tree(struct mount *mnt)
 {
