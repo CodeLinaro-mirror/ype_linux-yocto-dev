@@ -489,7 +489,7 @@ void mnt_put_write_access_file(struct file *file)
 	if (!(file->f_mode & FMODE_WRITER))
 		mnt_put_write_access(file->f_path.mnt);
 }
-EXPORT_SYMBOL_GPL(__mnt_drop_write);
+EXPORT_SYMBOL_GPL(mnt_put_write_access_file);
 
 void mnt_drop_write_file(struct file *file)
 {
