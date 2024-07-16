@@ -415,6 +415,8 @@ static int journal_entry_btree_keys_validate(struct bch_fs *c,
 					       flags|BCH_VALIDATE_journal);
 		if (ret == FSCK_DELETED_KEY)
 			continue;
+		else if (ret)
+			return ret;
 
 		k = bkey_next(k);
 	}
@@ -1677,6 +1679,13 @@ static CLOSURE_CALLBACK(journal_write_done)
 		mod_delayed_work(j->wq, &j->write_work, max(0L, delta));
 	}
 
+	/*
+	 * We don't typically trigger journal writes from her - the next journal
+	 * write will be triggered immediately after the previous one is
+	 * allocated, in bch2_journal_write() - but the journal write error path
+	 * is special:
+	 */
+	bch2_journal_do_writes(j);
 	spin_unlock(&j->lock);
 }
 
@@ -1755,11 +1764,13 @@ static CLOSURE_CALLBACK(journal_write_preflush)
 
 	if (j->seq_ondisk + 1 != le64_to_cpu(w->data->seq)) {
 		spin_lock(&j->lock);
-		closure_wait(&j->async_wait, cl);
+		if (j->seq_ondisk + 1 != le64_to_cpu(w->data->seq)) {
+			closure_wait(&j->async_wait, cl);
+			spin_unlock(&j->lock);
+			continue_at(cl, journal_write_preflush, j->wq);
+			return;
+		}
 		spin_unlock(&j->lock);
-
-		continue_at(cl, journal_write_preflush, j->wq);
-		return;
 	}
 
 	if (w->separate_flush) {
