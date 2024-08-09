@@ -21,6 +21,7 @@
  */
 
 #include "aufs.h"
+#include "inode.h"
 
 /* FS_IN_IGNORED is unnecessary */
 static const __u32 AuHfsnMask = (FS_MOVED_TO | FS_MOVED_FROM | FS_DELETE
