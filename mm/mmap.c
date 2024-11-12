@@ -1484,7 +1484,7 @@ static unsigned long __mmap_region(struct file *file, unsigned long addr,
 				 * and cause general protection fault
 				 * ultimately.
 				 */
-				fput(vma->vm_file);
+				vma_fput(vma);
 				vm_area_free(vma);
 				vma = merge;
 				/* Update vm_flags to pick up the change. */
@@ -1556,7 +1556,7 @@ expanded:
 	return addr;
 
 unmap_and_free_file_vma:
-	fput(vma->vm_file);
+	vma_fput(vma);
 	vma->vm_file = NULL;
 
 	vma_iter_set(&vmi, vma->vm_end);
@@ -1654,6 +1654,7 @@ SYSCALL_DEFINE5(remap_file_pages, unsigned long, start, unsigned long, size,
 	unsigned long ret = -EINVAL;
 	struct file *file;
 	vm_flags_t vm_flags;
+	struct file *prfile;
 
 	pr_warn_once("%s (%d) uses deprecated remap_file_pages() syscall. See Documentation/mm/remap_file_pages.rst.\n",
 		     current->comm, current->pid);
@@ -1696,14 +1697,16 @@ SYSCALL_DEFINE5(remap_file_pages, unsigned long, start, unsigned long, size,
 
 	/* Save vm_flags used to calculate prot and flags, and recheck later. */
 	vm_flags = vma->vm_flags;
-	file = get_file(vma->vm_file);
+	vma_get_file(vma);
+	file = vma->vm_file;
+	prfile = vma->vm_prfile;
 
 	mmap_read_unlock(mm);
 
 	/* Call outside mmap_lock to be consistent with other callers. */
 	ret = security_mmap_file(file, prot, flags);
 	if (ret) {
-		fput(file);
+		vma_fput(vma);
 		return ret;
 	}
 
@@ -1711,7 +1714,7 @@ SYSCALL_DEFINE5(remap_file_pages, unsigned long, start, unsigned long, size,
 
 	/* OK security check passed, take write lock + let it rip. */
 	if (mmap_write_lock_killable(mm)) {
-		fput(file);
+		vma_fput(vma);
 		return -EINTR;
 	}
 
@@ -1753,9 +1756,25 @@ SYSCALL_DEFINE5(remap_file_pages, unsigned long, start, unsigned long, size,
 
 	ret = do_mmap(vma->vm_file, start, size,
 			prot, flags, 0, pgoff, &populate, NULL);
+	if (!IS_ERR_VALUE(ret) && file && prfile) {
+		struct vm_area_struct *new_vma;
+
+		new_vma = find_vma(mm, ret);
+		if (!new_vma->vm_prfile)
+			new_vma->vm_prfile = prfile;
+		if (prfile)
+			get_file(prfile);
+	}
+
 out:
 	mmap_write_unlock(mm);
+	/*
+	 * two fput()s instead of vma_fput(vma),
+	 * coz vma may not be available anymore.
+	 */
 	fput(file);
+	if (prfile)
+		fput(prfile);
 	if (populate)
 		mm_populate(ret, populate);
 	if (!IS_ERR_VALUE(ret))
