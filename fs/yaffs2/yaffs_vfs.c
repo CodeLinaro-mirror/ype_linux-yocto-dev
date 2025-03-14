@@ -1118,7 +1118,7 @@ static int yaffs_readlink(struct dentry *dentry, char __user * buffer,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 15, 0)
 	ret = vfs_readlink(dentry, buffer, buflen, alias);
 #else
-	ret = readlink_copy(buffer, buflen, alias, strlen(alias));
+	ret = vfs_readlink(dentry, buffer, buflen);
 #endif
 	kfree(alias);
 	return ret;
