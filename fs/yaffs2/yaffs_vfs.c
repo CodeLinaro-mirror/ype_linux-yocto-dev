@@ -1442,7 +1442,7 @@ static int yaffs_mknod(struct inode *dir, struct dentry *dentry, int mode,
 }
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 4, 0))
-static int yaffs_mkdir(struct mnt_idmap *ns, struct inode *dir, struct dentry *dentry, umode_t mode)
+struct dentry* yaffs_mkdir(struct mnt_idmap *ns, struct inode *dir, struct dentry *dentry, umode_t mode)
 #else
 static int yaffs_mkdir(struct inode *dir, struct dentry *dentry, int mode)
 #endif
@@ -1450,7 +1450,10 @@ static int yaffs_mkdir(struct inode *dir, struct dentry *dentry, int mode)
 	int ret_val;
 	yaffs_trace(YAFFS_TRACE_OS, "yaffs_mkdir");
 	ret_val = yaffs_mknod(ns, dir, dentry, mode | S_IFDIR, 0);
-	return ret_val;
+	if ( ret_val )
+		return dentry;
+
+	return NULL;
 }
 
 
@@ -2272,7 +2275,7 @@ static int yaffs_bg_thread_fn(void *data)
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
 		add_timer(&timer.timer);
 		schedule();
-		del_timer_sync(&timer.timer);
+		timer_delete_sync(&timer.timer);
 #else
 		add_timer(&timer);
 		schedule();
