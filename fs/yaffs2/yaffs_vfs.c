@@ -1289,7 +1289,7 @@ static void yaffs_read_inode(struct inode *inode)
 
 
 
-struct inode *yaffs_get_inode(struct super_block *sb, int mode, int dev,
+static struct inode *yaffs_get_inode(struct super_block *sb, int mode, int dev,
 			      struct yaffs_obj *obj)
 {
 	struct inode *inode;
@@ -1841,7 +1841,6 @@ static int yaffs_iterate(struct file *f, struct dir_context *dc)
 	int ret_val = 0;
 
 	char name[YAFFS_MAX_NAME_LENGTH + 1];
-	u64 i_version;
 
 	obj = yaffs_dentry_to_obj(Y_GET_DENTRY(f));
 	dev = obj->my_dev;
@@ -2441,7 +2440,7 @@ static struct dentry *yaffs2_fh_to_parent(struct super_block *sb,
 				    yaffs2_nfs_get_inode);
 }
 
-struct dentry *yaffs2_get_parent(struct dentry *dentry)
+static struct dentry *yaffs2_get_parent(struct dentry *dentry)
 {
 
 	struct super_block *sb = dentry->d_inode->i_sb;
