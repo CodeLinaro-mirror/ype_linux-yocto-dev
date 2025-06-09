@@ -17,6 +17,7 @@
 #include "yaffs_guts.h"
 #include "yaffs_trace.h"
 #include "yaffs_packedtags2.h"
+#include "yaffs_tagsmarshall.h"
 
 static int yaffs_tags_marshall_write(struct yaffs_dev *dev,
 				    int nand_chunk, const u8 *data,
