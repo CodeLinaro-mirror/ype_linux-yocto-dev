@@ -554,7 +554,7 @@ static void yaffs2_do_endian_tnode(struct yaffs_dev *dev, struct yaffs_tnode *tn
 		as_u32[i] = swap_u32(as_u32[i]);
 }
 
-struct yaffs_tnode *yaffs2_do_endian_tnode_copy(struct yaffs_dev *dev,
+static struct yaffs_tnode *yaffs2_do_endian_tnode_copy(struct yaffs_dev *dev,
 					       struct yaffs_tnode *tn)
 {
 	if (!dev->swap_endian)
