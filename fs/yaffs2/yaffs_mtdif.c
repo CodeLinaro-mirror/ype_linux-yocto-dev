@@ -45,34 +45,6 @@
 #define mtd_block_markbad(m, offs) (m)->block_markbad(m, offs)
 #endif
 
-int nandmtd_erase_block(struct yaffs_dev *dev, int block_no)
-{
-	struct mtd_info *mtd = yaffs_dev_to_mtd(dev);
-	u32 addr = ((loff_t) block_no) * dev->param.total_bytes_per_chunk *
-		dev->param.chunks_per_block;
-	struct erase_info ei;
-	int retval = 0;
-
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 17, 0))
-	ei.mtd = mtd;
-#endif
-	ei.addr = addr;
-	ei.len = dev->param.total_bytes_per_chunk * dev->param.chunks_per_block;
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 17, 0))
-	ei.time = 1000;
-	ei.retries = 2;
-	ei.callback = NULL;
-	ei.priv = (u_long) dev;
-#endif
-
-	retval = mtd_erase(mtd, &ei);
-
-	if (retval == 0)
-		return YAFFS_OK;
-
-	return YAFFS_FAIL;
-}
-
 static int yaffs_mtd_write(struct yaffs_dev *dev, int nand_chunk,
 			   const u8 *data, int data_len,
 			   const u8 *oob, int oob_len)
