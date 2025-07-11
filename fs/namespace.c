@@ -968,6 +968,7 @@ int is_current_mnt_ns(struct vfsmount *mnt)
 {
 	return check_mnt(real_mount(mnt));
 }
+EXPORT_SYMBOL_GPL(is_current_mnt_ns);
 
 static inline bool check_anonymous_mnt(struct mount *mnt)
 {
@@ -2338,12 +2339,14 @@ static bool __has_locked_children(struct mount *mnt, struct dentry *dentry)
 	}
 	return false;
 }
+EXPORT_SYMBOL_GPL(drop_collected_mounts);
 
 bool has_locked_children(struct mount *mnt, struct dentry *dentry)
 {
 	guard(mount_locked_reader)();
 	return __has_locked_children(mnt, dentry);
 }
+EXPORT_SYMBOL_GPL(drop_collected_paths);
 
 /*
  * Check that there aren't references to earlier/same mount namespaces in the
@@ -2360,6 +2363,7 @@ static bool check_for_nsfs_mounts(struct mount *subtree)
 			return false;
 	return true;
 }
+EXPORT_SYMBOL_GPL(collect_paths);
 
 /**
  * clone_private_mount - create a private clone of a path

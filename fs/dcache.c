@@ -1387,6 +1387,7 @@ rename_retry:
 	seq = 1;
 	goto again;
 }
+EXPORT_SYMBOL_GPL(d_walk);
 
 struct check_mount {
 	struct vfsmount *mnt;
@@ -2889,6 +2890,7 @@ static void __d_move(struct dentry *dentry, struct dentry *target,
 	spin_unlock(&target->d_lock);
 	spin_unlock(&dentry->d_lock);
 }
+EXPORT_SYMBOL_GPL(d_exchange);
 
 /*
  * d_move - move a dentry
