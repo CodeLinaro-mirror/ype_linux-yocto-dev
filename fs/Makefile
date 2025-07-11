@@ -131,3 +131,4 @@ obj-$(CONFIG_ZONEFS_FS)		+= zonefs/
 obj-$(CONFIG_YAFFS_FS)		+= yaffs2/
 obj-$(CONFIG_BPF_LSM)		+= bpf_fs_kfuncs.o
 obj-$(CONFIG_RESCTRL_FS)	+= resctrl/
+obj-$(CONFIG_AUFS_FS)           += aufs/
