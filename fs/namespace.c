@@ -2394,7 +2394,6 @@ static bool __has_locked_children(struct mount *mnt, struct dentry *dentry)
 	}
 	return false;
 }
-EXPORT_SYMBOL_GPL(drop_collected_mounts);
 
 bool has_locked_children(struct mount *mnt, struct dentry *dentry)
 {
