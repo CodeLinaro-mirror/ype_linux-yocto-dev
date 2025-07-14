@@ -933,7 +933,7 @@ static int warn_once_set(void *data, u64 val)
 	}
 
 	if (warn_timer_active) {
-		del_timer_sync(&warn_reset_timer);
+		timer_delete_sync(&warn_reset_timer);
 		warn_timer_active = 0;
 	}
 	clear_warn_once = 0;
