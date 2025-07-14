@@ -1004,6 +1004,13 @@ static inline int check_mnt(struct mount *mnt)
 	return mnt->mnt_ns == current->nsproxy->mnt_ns;
 }
 
+/* for aufs, CONFIG_AUFS_BR_FUSE */
+int is_current_mnt_ns(struct vfsmount *mnt)
+{
+	return check_mnt(real_mount(mnt));
+}
+EXPORT_SYMBOL_GPL(is_current_mnt_ns);
+
 static inline bool check_anonymous_mnt(struct mount *mnt)
 {
 	u64 seq;
@@ -2359,6 +2366,7 @@ struct path *collect_paths(const struct path *path,
 		path_get(p);
 	return res;
 }
+EXPORT_SYMBOL_GPL(collect_paths);
 
 void drop_collected_paths(struct path *paths, struct path *prealloc)
 {
@@ -2367,6 +2375,7 @@ void drop_collected_paths(struct path *paths, struct path *prealloc)
 	if (paths != prealloc)
 		kfree(paths);
 }
+EXPORT_SYMBOL_GPL(drop_collected_paths);
 
 static void free_mnt_ns(struct mnt_namespace *);
 static struct mnt_namespace *alloc_mnt_ns(struct user_namespace *, bool);
