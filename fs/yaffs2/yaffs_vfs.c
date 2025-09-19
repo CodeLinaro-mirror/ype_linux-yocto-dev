@@ -570,7 +570,7 @@ static void yaffs_release_space(struct file *f)
 #if (YAFFS_USE_WRITE_BEGIN_END > 0)
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0)
-static int yaffs_write_begin(struct file *filp, struct address_space *mapping,
+static int yaffs_write_begin(const struct kiocb *iocb, struct address_space *mapping,
 			     loff_t pos, unsigned len,
 			     struct folio **foliop, void **fsdata)
 #else
@@ -579,6 +579,7 @@ static int yaffs_write_begin(struct file *filp, struct address_space *mapping,
 			     struct page **pagep, void **fsdata)
 #endif
 {
+	struct file *filp = iocb->ki_filp;
 	struct page *pg = NULL;
 	pgoff_t index = pos >> PAGE_CACHE_SHIFT;
 
@@ -709,10 +710,11 @@ static ssize_t yaffs_file_write(struct file *f, const char *buf, size_t n,
 
 
 #if (YAFFS_USE_WRITE_BEGIN_END > 0)
-static int yaffs_write_end(struct file *filp, struct address_space *mapping,
+static int yaffs_write_end(const struct kiocb *iocb, struct address_space *mapping,
 			   loff_t pos, unsigned len, unsigned copied,
 			   struct folio *folio, void *fsdadata)
 {
+	struct file *filp = iocb->ki_filp;
 	int ret = 0;
 	void *addr, *kva;
 	uint32_t offset_into_page = pos & (PAGE_CACHE_SIZE - 1);
