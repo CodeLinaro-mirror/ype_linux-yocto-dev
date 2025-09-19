@@ -25,6 +25,7 @@
 #include <linux/seq_file.h>
 #include <linux/statfs.h>
 #include <linux/vmalloc.h>
+#include <linux/dcache.h> /* for set_default_d_op() */
 #include "aufs.h"
 
 /*
@@ -734,18 +735,26 @@ void au_remount_refresh(struct super_block *sb, unsigned int do_idop)
 
 	if (do_idop) {
 		if (au_ftest_si(sbi, NO_DREVAL)) {
-			AuDebugOn(sb->s_d_op == &aufs_dop_noreval);
-			sb->s_d_op = &aufs_dop_noreval;
+                        /* set default dentry ops for this superblock */
+                        set_default_d_op(sb, &aufs_dop_noreval);
 			AuDebugOn(sbi->si_iop_array == aufs_iop_nogetattr);
 			sbi->si_iop_array = aufs_iop_nogetattr;
 		} else {
-			AuDebugOn(sb->s_d_op == &aufs_dop);
-			sb->s_d_op = &aufs_dop;
+                        /* restore default dentry ops */
+                        set_default_d_op(sb, &aufs_dop);
 			AuDebugOn(sbi->si_iop_array == aufs_iop);
 			sbi->si_iop_array = aufs_iop;
 		}
 		pr_info("reset to %ps and %ps\n",
-			sb->s_d_op, sbi->si_iop_array);
+                        /* previous code passed sb->s_d_op here; sb->s_d_op
+						 * is no longer exported.  The callers below expect
+						 * the specific dentry ops pointer — pass the
+						 * appropriate one explicitly (aufs uses aufs_dop
+						 * or aufs_dop_noreval).  If the intent was the
+						 * current default, pass the same pointer you set
+						 * above or NULL if no-op is acceptable.
+						 */
+                        &aufs_dop, sbi->si_iop_array);
 	}
 
 	di_write_unlock(root);

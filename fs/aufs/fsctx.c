@@ -110,6 +110,7 @@ static int au_fsctx_fill_super(struct super_block *sb, struct fs_context *fc)
 	struct au_sbinfo *sbinfo = a->sbinfo;
 	struct dentry *root;
 	struct inode *inode;
+	const struct dentry_operations *dops = &aufs_dop;
 
 	sbinfo->si_sb = sb;
 	sb->s_fs_info = sbinfo;
@@ -122,7 +123,8 @@ static int au_fsctx_fill_super(struct super_block *sb, struct fs_context *fc)
 	/* all timestamps always follow the ones on the branch */
 	sb->s_flags |= SB_NOATIME | SB_NODIRATIME | SB_I_VERSION;
 	sb->s_op = &aufs_sop;
-	sb->s_d_op = &aufs_dop;
+	dops = &aufs_dop;
+	set_default_d_op(sb, dops);
 	sb->s_magic = AUFS_SUPER_MAGIC;
 	sb->s_maxbytes = 0;
 	sb->s_stack_depth = 1;
@@ -145,9 +147,11 @@ static int au_fsctx_fill_super(struct super_block *sb, struct fs_context *fc)
 	err = au_opts_mount(sb, &a->opts);
 	AuTraceErr(err);
 	if (!err && au_ftest_si(sbinfo, NO_DREVAL)) {
-		sb->s_d_op = &aufs_dop_noreval;
+                dops = &aufs_dop_noreval;
+                set_default_d_op(sb, dops);
 		/* infofc(fc, "%ps", sb->s_d_op); */
-		pr_info("%ps\n", sb->s_d_op);
+                /* print the dentry ops pointer we just set (no public getter). */
+                pr_info("%ps\n", dops);		
 		au_refresh_dop(root, /*force_reval*/0);
 		sbinfo->si_iop_array = aufs_iop_nogetattr;
 		au_refresh_iop(inode, /*force_getattr*/0);
