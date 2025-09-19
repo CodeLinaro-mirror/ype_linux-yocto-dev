@@ -730,17 +730,20 @@ out:
 
 void au_refresh_dop(struct dentry *dentry, int force_reval)
 {
-	const struct dentry_operations *dop
-		= force_reval ? &aufs_dop : dentry->d_sb->s_d_op;
-	static const unsigned int mask
-		= DCACHE_OP_REVALIDATE | DCACHE_OP_WEAK_REVALIDATE;
+	const struct dentry_operations *dop;
+	static const unsigned int mask =
+		DCACHE_OP_REVALIDATE | DCACHE_OP_WEAK_REVALIDATE;
 
 	BUILD_BUG_ON(sizeof(mask) != sizeof(dentry->d_flags));
+
+	/* decide dop explicitly, since sb->s_d_op is gone */
+	dop = force_reval ? &aufs_dop : &aufs_dop_noreval;
 
 	if (dentry->d_op == dop)
 		return;
 
 	AuDbg("%pd\n", dentry);
+
 	spin_lock(&dentry->d_lock);
 	if (dop == &aufs_dop)
 		dentry->d_flags |= mask;

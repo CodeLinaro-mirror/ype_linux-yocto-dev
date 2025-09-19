@@ -484,11 +484,18 @@ int vfsub_rename(struct inode *src_dir, struct dentry *src_dentry,
 		goto out;
 
 	rd.old_mnt_idmap = mnt_idmap(path->mnt);
-	rd.old_dir = src_dir;
-	rd.old_dentry = src_dentry;
+
+	/* convert old/new dir (inode) style -> parent dentry style */
+	rd.old_parent = dget_parent(src_dentry);   /* parent dentry of source */
+	rd.old_dentry = src_dentry;                 /* the dentry being renamed */
+	rd.new_parent = dget_parent(path->dentry);        /* parent dentry of target */
+	rd.new_dentry = path->dentry;                     /* the target dentry */
+	
+	/* rd.old_dir = src_dir; */
+	/* rd.old_dentry = src_dentry; */
 	rd.new_mnt_idmap = rd.old_mnt_idmap;
-	rd.new_dir = dir;
-	rd.new_dentry = path->dentry;
+	/* rd.new_dir = dir; */
+	/* rd.new_dentry = path->dentry; */
 	rd.delegated_inode = delegated_inode;
 	rd.flags = flags;
 	lockdep_off();
