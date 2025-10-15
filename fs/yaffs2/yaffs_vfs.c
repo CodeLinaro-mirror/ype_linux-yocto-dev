@@ -526,7 +526,18 @@ static int yaffs_writepage_wrapper(struct folio *folio, struct writeback_control
 
 static int yaffs_writepages(struct address_space *mapping, struct writeback_control *wbc)
 {
-    return write_cache_pages(mapping, wbc, yaffs_writepage_wrapper, NULL);
+    struct folio *folio = NULL;
+    int ret = 0;
+    int error = 0;
+
+    while ((folio = writeback_iter(mapping, wbc, folio, &error))) {
+        ret = yaffs_writepage_wrapper(folio, wbc, NULL);
+        if (ret < 0) {
+            error = ret;
+        }
+    }
+
+    return error;
 }
 
 /* Space holding and freeing is done to ensure we have space available for write_begin/end */
