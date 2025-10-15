@@ -115,7 +115,7 @@
 #include <linux/statfs.h>
 
 #define UnlockPage(p) unlock_page(p)
-#define Page_Uptodate(page) test_bit(PG_uptodate, &(page)->flags)
+
 
 /* FIXME: use sb->s_id instead ? */
 //#define yaffs_devname(sb, buf) bdevname(sb->s_bdev, buf)
@@ -591,7 +591,6 @@ static int yaffs_write_begin(struct file *filp, struct address_space *mapping,
 #endif
 {
 	struct file *filp = iocb->ki_filp;
-	struct page *pg = NULL;
 	pgoff_t index = pos >> PAGE_CACHE_SHIFT;
 
 	int ret = 0;
@@ -613,7 +612,7 @@ static int yaffs_write_begin(struct file *filp, struct address_space *mapping,
 	}
 	yaffs_trace(YAFFS_TRACE_OS,
 		"start yaffs_write_begin index %d(%x) uptodate %d",
-		(int)index, (int)index, Page_Uptodate(pg) ? 1 : 0);
+		(int)index, (int)index, folio_test_uptodate(*foliop) ? 1 : 0);
 
 	/* Get fs space */
 	space_held = yaffs_hold_space(filp);
@@ -625,8 +624,8 @@ static int yaffs_write_begin(struct file *filp, struct address_space *mapping,
 
 	/* Update page if required */
 
-	if (!Page_Uptodate(pg))
-		ret = yaffs_readpage_nolock(filp, pg);
+	if (!folio_test_uptodate(*foliop))
+		ret = yaffs_read_folio(filp, *foliop);
 
 	if (ret)
 		goto out;
@@ -641,9 +640,9 @@ out:
 		"end yaffs_write_begin fail returning %d", ret);
 	if (space_held)
 		yaffs_release_space(filp);
-	if (pg) {
-		unlock_page(pg);
-		page_cache_release(pg);
+	if (*foliop) {
+		folio_unlock(*foliop);
+		folio_put(*foliop);
 	}
 	return ret;
 }
