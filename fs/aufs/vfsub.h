@@ -126,7 +126,7 @@ int vfsub_sync_filesystem(struct super_block *h_sb);
 
 /* ---------------------------------------------------------------------- */
 
-int vfsub_update_h_iattr(struct path *h_path, int *did);
+int vfsub_update_h_iattr(const struct path *h_path, int *did);
 struct file *vfsub_dentry_open(struct path *path, int flags);
 struct file *vfsub_filp_open(const char *path, int oflags, int mode);
 struct au_branch;
