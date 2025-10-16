@@ -26,6 +26,7 @@
 #include <linux/statfs.h>
 #include <linux/vmalloc.h>
 #include <linux/dcache.h> /* for set_default_d_op() */
+#include <linux/fs.h>
 #include "aufs.h"
 
 /*
@@ -771,12 +772,17 @@ void au_remount_refresh(struct super_block *sb, unsigned int do_idop)
 		AuIOErr("refresh failed, ignored, %d\n", err);
 }
 
+static int aufs_drop_inode(struct inode *inode)
+{
+    return inode_generic_drop(inode);
+}
+
 const struct super_operations aufs_sop = {
 	.alloc_inode	= aufs_alloc_inode,
 	.destroy_inode	= aufs_destroy_inode,
 	.free_inode	= aufs_free_inode,
 	/* always deleting, no clearing */
-	.drop_inode	= generic_delete_inode,
+	.drop_inode	= aufs_drop_inode,
 	.show_options	= aufs_show_options,
 	.statfs		= aufs_statfs,
 	.put_super	= aufs_put_super,
