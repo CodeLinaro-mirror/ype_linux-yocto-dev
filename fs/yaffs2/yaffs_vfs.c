@@ -115,7 +115,7 @@
 #include <linux/statfs.h>
 
 #define UnlockPage(p) unlock_page(p)
-#define Page_Uptodate(page) test_bit(PG_uptodate, &(page)->flags)
+
 
 /* FIXME: use sb->s_id instead ? */
 //#define yaffs_devname(sb, buf) bdevname(sb->s_bdev, buf)
@@ -526,7 +526,18 @@ static int yaffs_writepage_wrapper(struct folio *folio, struct writeback_control
 
 static int yaffs_writepages(struct address_space *mapping, struct writeback_control *wbc)
 {
-    return write_cache_pages(mapping, wbc, yaffs_writepage_wrapper, NULL);
+    struct folio *folio = NULL;
+    int ret = 0;
+    int error = 0;
+
+    while ((folio = writeback_iter(mapping, wbc, folio, &error))) {
+        ret = yaffs_writepage_wrapper(folio, wbc, NULL);
+        if (ret < 0) {
+            error = ret;
+        }
+    }
+
+    return error;
 }
 
 /* Space holding and freeing is done to ensure we have space available for write_begin/end */
@@ -580,7 +591,6 @@ static int yaffs_write_begin(struct file *filp, struct address_space *mapping,
 #endif
 {
 	struct file *filp = iocb->ki_filp;
-	struct page *pg = NULL;
 	pgoff_t index = pos >> PAGE_CACHE_SHIFT;
 
 	int ret = 0;
@@ -602,7 +612,7 @@ static int yaffs_write_begin(struct file *filp, struct address_space *mapping,
 	}
 	yaffs_trace(YAFFS_TRACE_OS,
 		"start yaffs_write_begin index %d(%x) uptodate %d",
-		(int)index, (int)index, Page_Uptodate(pg) ? 1 : 0);
+		(int)index, (int)index, folio_test_uptodate(*foliop) ? 1 : 0);
 
 	/* Get fs space */
 	space_held = yaffs_hold_space(filp);
@@ -614,8 +624,8 @@ static int yaffs_write_begin(struct file *filp, struct address_space *mapping,
 
 	/* Update page if required */
 
-	if (!Page_Uptodate(pg))
-		ret = yaffs_readpage_nolock(filp, pg);
+	if (!folio_test_uptodate(*foliop))
+		ret = yaffs_read_folio(filp, *foliop);
 
 	if (ret)
 		goto out;
@@ -630,9 +640,9 @@ out:
 		"end yaffs_write_begin fail returning %d", ret);
 	if (space_held)
 		yaffs_release_space(filp);
-	if (pg) {
-		unlock_page(pg);
-		page_cache_release(pg);
+	if (*foliop) {
+		folio_unlock(*foliop);
+		folio_put(*foliop);
 	}
 	return ret;
 }
@@ -3209,115 +3219,132 @@ static struct super_block *yaffs_internal_read_super(int yaffs_version,
 	return sb;
 }
 
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(2, 5, 0))
-static int yaffs_internal_read_super_mtd(struct super_block *sb, void *data,
-					 int silent)
+#include <linux/fs_context.h>
+
+// New wrapper for yaffs_internal_read_super
+static int yaffs_fill_super_callback(struct super_block *sb, struct fs_context *fc)
 {
-	return yaffs_internal_read_super(1, sb, data, silent) ? 0 : -EINVAL;
+    int yaffs_version = (long)fc->s_fs_info; // Passed from yaffs_mount
+    void *data = fc->fs_private; // Mount options string
+    int silent = (fc->sb_flags & SB_SILENT) ? 1 : 0;
+
+    struct super_block *ret_sb = yaffs_internal_read_super(yaffs_version, sb, data, silent);
+
+    return ret_sb ? 0 : -EINVAL;
 }
+
+
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 39))
-static struct dentry *yaffs_mount(struct file_system_type *fs_type, int flags,
-        const char *dev_name, void *data)
+static struct dentry *yaffs_mount(struct file_system_type *fs_type, int flags,\
+        const char *dev_name, void *data)\
 {
-    return mount_bdev(fs_type, flags, dev_name, data, yaffs_internal_read_super_mtd);
+    struct fs_context *fc;
+    int ret;
+
+    fc = fs_context_for_mount(fs_type, flags);
+    if (!fc)
+        return ERR_PTR(-ENOMEM);
+
+    if (dev_name) {
+        fc->source = dev_name;
+    }
+
+    ret = get_tree_bdev(fc, yaffs_fill_super_callback);
+    if (ret < 0)
+        goto put_fc;
+
+    return fc->root;
+
+put_fc:
+    put_fs_context(fc);
+    return ERR_PTR(ret);
 }
 #elif (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 17))
-static int yaffs_read_super(struct file_system_type *fs,
-			    int flags, const char *dev_name,
-			    void *data, struct vfsmount *mnt)
+static int yaffs_read_super(struct file_system_type *fs,\
+			    int flags, const char *dev_name,\
+			    void *data, struct vfsmount *mnt)\
 {
 
-	return get_sb_bdev(fs, flags, dev_name, data,
-			   yaffs_internal_read_super_mtd, mnt);
+	return get_sb_bdev(fs, flags, dev_name, data,\
+			   yaffs_internal_read_super_mtd, mnt);\
 }
 #else
-static struct super_block *yaffs_read_super(struct file_system_type *fs,
-					    int flags, const char *dev_name,
-					    void *data)
+static struct super_block *yaffs_read_super(struct file_system_type *fs,\
+					    int flags, const char *dev_name,\
+					    void *data)\
 {
 
-	return get_sb_bdev(fs, flags, dev_name, data,
-			   yaffs_internal_read_super_mtd);
+	return get_sb_bdev(fs, flags, dev_name, data,\
+			   yaffs_internal_read_super_mtd);\
 }
 #endif
 
 static struct file_system_type yaffs_fs_type = {
 	.owner = THIS_MODULE,
 	.name = "yaffs",
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 39))
-        .mount = yaffs_mount,
-#else
-        .get_sb = yaffs_read_super,
-#endif
-     	.kill_sb = kill_block_super,
+    .mount = yaffs_mount,
+    .kill_sb = kill_block_super,
 	.fs_flags = FS_REQUIRES_DEV,
 };
-#else
-static struct super_block *yaffs_read_super(struct super_block *sb, void *data,
-					    int silent)
-{
-	return yaffs_internal_read_super(1, sb, data, silent);
-}
-
-static DECLARE_FSTYPE(yaffs_fs_type, "yaffs", yaffs_read_super,
-		      FS_REQUIRES_DEV);
-#endif
 
 
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(2, 5, 0))
-static int yaffs2_internal_read_super_mtd(struct super_block *sb, void *data,
-					  int silent)
-{
-	return yaffs_internal_read_super(2, sb, data, silent) ? 0 : -EINVAL;
-}
+
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 39))
-static struct dentry *yaffs2_mount(struct file_system_type *fs_type, int flags,
-        const char *dev_name, void *data)
+static struct dentry *yaffs2_mount(struct file_system_type *fs_type, int flags,\
+        const char *dev_name, void *data)\
 {
-        return mount_bdev(fs_type, flags, dev_name, data, yaffs2_internal_read_super_mtd);
+    struct fs_context *fc;
+    int ret;
+
+    fc = fs_context_for_mount(fs_type, flags);
+    if (!fc)
+        return ERR_PTR(-ENOMEM);
+
+    fc->s_fs_info = (void *)2; // Pass yaffs_version = 2
+    fc->fs_private = (void *)data; // Pass mount options string
+
+    if (dev_name) {
+        fc->source = dev_name;
+    }
+
+    ret = get_tree_bdev(fc, yaffs_fill_super_callback);
+    if (ret < 0)
+        goto put_fc;
+
+    return fc->root;
+
+put_fc:
+    put_fs_context(fc);
+    return ERR_PTR(ret);
 }
 #elif (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 17))
-static int yaffs2_read_super(struct file_system_type *fs,
-			     int flags, const char *dev_name, void *data,
-			     struct vfsmount *mnt)
+static int yaffs2_read_super(struct file_system_type *fs,\
+			     int flags, const char *dev_name, void *data,\
+			     struct vfsmount *mnt)\
 {
-	return get_sb_bdev(fs, flags, dev_name, data,
-			   yaffs2_internal_read_super_mtd, mnt);
+	return get_sb_bdev(fs, flags, dev_name, data,\
+			   yaffs2_internal_read_super_mtd, mnt);\
 }
 #else
-static struct super_block *yaffs2_read_super(struct file_system_type *fs,
-					     int flags, const char *dev_name,
-					     void *data)
+static struct super_block *yaffs2_read_super(struct file_system_type *fs,\
+					     int flags, const char *dev_name,\
+					     void *data)\
 {
 
-	return get_sb_bdev(fs, flags, dev_name, data,
-			   yaffs2_internal_read_super_mtd);
+	return get_sb_bdev(fs, flags, dev_name, data,\
+			   yaffs2_internal_read_super_mtd);\
 }
 #endif
 
 static struct file_system_type yaffs2_fs_type = {
 	.owner = THIS_MODULE,
 	.name = "yaffs2",
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 39))
-        .mount = yaffs2_mount,
-#else
-        .get_sb = yaffs2_read_super,
-#endif
-     	.kill_sb = kill_block_super,
+    .mount = yaffs2_mount,
+    .kill_sb = kill_block_super,
 	.fs_flags = FS_REQUIRES_DEV,
 };
-#else
-static struct super_block *yaffs2_read_super(struct super_block *sb,
-					     void *data, int silent)
-{
-	return yaffs_internal_read_super(2, sb, data, silent);
-}
-
-static DECLARE_FSTYPE(yaffs2_fs_type, "yaffs2", yaffs2_read_super,
-		      FS_REQUIRES_DEV);
-#endif
 
 
 static struct proc_dir_entry *my_proc_entry;
