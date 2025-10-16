@@ -198,7 +198,7 @@ struct file *au_xino_create(struct super_block *sb, char *fpath, int silent,
 	inode = file_inode(file);
 	/* no delegation since it is just created */
 	if (vfsub_inode_nlink(inode, AU_I_BRANCH))
-		err = vfsub_unlink(h_dir, &file->f_path, /*delegated*/NULL,
+		err = vfsub_unlink(h_dir, &file->__f_path, /*delegated*/NULL,
 				   /*force*/0);
 	inode_unlock(h_dir);
 	dput(h_parent);
@@ -237,7 +237,7 @@ struct file *au_xino_create2(struct super_block *sb, struct path *base,
 	struct file *file;
 	struct dentry *dentry;
 	struct inode *dir, *delegated;
-	struct qstr *name;
+	const struct qstr *name;
 	struct path ppath, path;
 	int err, do_unlock;
 	struct au_xino_lock_dir ldir;
@@ -276,8 +276,7 @@ struct file *au_xino_create2(struct super_block *sb, struct path *base,
 	}
 
 	delegated = NULL;
-	err = vfsub_unlink(dir, &file->f_path, &delegated, /*force*/0);
-	au_xino_unlock_dir(&ldir);
+			err = vfsub_unlink(dir, (struct path *)&file->f_path, &delegated, /*force*/0);	au_xino_unlock_dir(&ldir);
 	do_unlock = 0;
 	if (unlikely(err == -EWOULDBLOCK)) {
 		pr_warn("cannot retry for NFSv4 delegation"
@@ -1669,7 +1668,7 @@ out:
  * if found then share the xinofile with another branch.
  */
 int au_xino_init_br(struct super_block *sb, struct au_branch *br, ino_t h_ino,
-		    struct path *base)
+		    const struct path *h_path)
 {
 	int err;
 	struct au_xino_do_set_br args = {
@@ -1679,7 +1678,7 @@ int au_xino_init_br(struct super_block *sb, struct au_branch *br, ino_t h_ino,
 
 	args.bshared = sbr_find_shared(sb, /*btop*/0, au_sbbot(sb),
 				       au_br_sb(br));
-	err = au_xino_do_set_br(sb, base, &args);
+	err = au_xino_do_set_br(sb, h_path, &args);
 	if (unlikely(err))
 		au_xino_put(br);
 
