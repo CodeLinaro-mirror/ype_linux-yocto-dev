@@ -162,6 +162,7 @@ static size_t initargs_offs;
 
 static char *execute_command;
 static char *ramdisk_execute_command = "/init";
+static bool rdinit_cmdline_set __initdata;
 
 /*
  * Used to generate warnings if static_key manipulation functions are used
@@ -623,6 +624,7 @@ static int __init rdinit_setup(char *str)
 	unsigned int i;
 
 	ramdisk_execute_command = str;
+	rdinit_cmdline_set = true;
 	/* See "auto" comment in init_setup */
 	for (i = 1; i < MAX_INIT_ARGS; i++)
 		argv_init[i] = NULL;
@@ -1672,6 +1674,11 @@ void __init console_on_rootfs(void)
 
 static noinline void __init kernel_init_freeable(void)
 {
+#ifdef CONFIG_BLK_DEV_INITRD
+	bool initrd_available;
+#else
+	bool initrd_available = false;
+#endif
 	/* Now the scheduler is fully set up and can do blocking allocations */
 	gfp_allowed_mask = __GFP_BITS_MASK;
 
@@ -1703,6 +1710,14 @@ static noinline void __init kernel_init_freeable(void)
 
 	kunit_run_all_tests();
 
+#ifdef CONFIG_BLK_DEV_INITRD
+	/*
+	 * Capture whether an initrd was supplied before wait_for_initramfs()
+	 * resets the initrd markers.
+	 */
+	initrd_available = initrd_start || phys_initrd_size;
+#endif
+
 	wait_for_initramfs();
 	console_on_rootfs();
 
@@ -1713,8 +1728,10 @@ static noinline void __init kernel_init_freeable(void)
 	int ramdisk_command_access;
 	ramdisk_command_access = init_eaccess(ramdisk_execute_command);
 	if (ramdisk_command_access != 0) {
-		pr_warn("check access for rdinit=%s failed: %i, ignoring\n",
-			ramdisk_execute_command, ramdisk_command_access);
+		if (initrd_available || rdinit_cmdline_set) {
+			pr_warn("check access for rdinit=%s failed: %i, ignoring\n",
+				ramdisk_execute_command, ramdisk_command_access);
+		}
 		ramdisk_execute_command = NULL;
 		prepare_namespace();
 	}
