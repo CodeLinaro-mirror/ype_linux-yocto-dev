@@ -1428,9 +1428,9 @@ static int aufs_update_time(struct inode *inode, enum fs_update_time type,
 		AuWarn1("timestamps for i%lu are ignored "
 			"since it is on readonly branch (hi%lu).\n",
 			inode->i_ino, h_inode->i_ino);
-	} else if (flags & ~S_ATIME) {
+	} else if (type != FS_UPD_ATIME) {
 		err = -EIO;
-		AuIOErr1("unexpected flags 0x%x\n", flags);
+		AuIOErr1("unexpected type %d\n", type);
 		AuDebugOn(1);
 	}
 
@@ -1439,9 +1439,6 @@ static int aufs_update_time(struct inode *inode, enum fs_update_time type,
 	ii_write_unlock(inode);
 	si_read_unlock(sb);
 	lockdep_on();
-
-	if (!err && (flags & S_VERSION))
-		inode_inc_iversion(inode);
 
 	return err;
 }
