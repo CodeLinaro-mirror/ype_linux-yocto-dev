@@ -2832,7 +2832,6 @@ static const struct super_operations yaffs_super_ops = {
 #ifdef YAFFS_HAS_WRITE_SUPER
 	.write_super = yaffs_write_super,
 #endif
-	.remount_fs = yaffs_remount_fs,
 };
 
 struct yaffs_options {
@@ -3221,128 +3220,52 @@ static struct super_block *yaffs_internal_read_super(int yaffs_version,
 
 #include <linux/fs_context.h>
 
-// New wrapper for yaffs_internal_read_super
 static int yaffs_fill_super_callback(struct super_block *sb, struct fs_context *fc)
 {
-    int yaffs_version = (long)fc->s_fs_info; // Passed from yaffs_mount
-    void *data = fc->fs_private; // Mount options string
-    int silent = (fc->sb_flags & SB_SILENT) ? 1 : 0;
+	int yaffs_version = (long)fc->s_fs_info;
+	void *data = fc->fs_private;
+	int silent = (fc->sb_flags & SB_SILENT) ? 1 : 0;
+	struct super_block *ret_sb;
 
-    struct super_block *ret_sb = yaffs_internal_read_super(yaffs_version, sb, data, silent);
-
-    return ret_sb ? 0 : -EINVAL;
+	ret_sb = yaffs_internal_read_super(yaffs_version, sb, data, silent);
+	return ret_sb ? 0 : -EINVAL;
 }
 
-
-
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 39))
-static struct dentry *yaffs_mount(struct file_system_type *fs_type, int flags,\
-        const char *dev_name, void *data)\
+static int yaffs_get_tree(struct fs_context *fc)
 {
-    struct fs_context *fc;
-    int ret;
-
-    fc = fs_context_for_mount(fs_type, flags);
-    if (!fc)
-        return ERR_PTR(-ENOMEM);
-
-    if (dev_name) {
-        fc->source = dev_name;
-    }
-
-    ret = get_tree_bdev(fc, yaffs_fill_super_callback);
-    if (ret < 0)
-        goto put_fc;
-
-    return fc->root;
-
-put_fc:
-    put_fs_context(fc);
-    return ERR_PTR(ret);
+	return get_tree_bdev(fc, yaffs_fill_super_callback);
 }
-#elif (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 17))
-static int yaffs_read_super(struct file_system_type *fs,\
-			    int flags, const char *dev_name,\
-			    void *data, struct vfsmount *mnt)\
+
+static const struct fs_context_operations yaffs_context_ops = {
+	.get_tree	= yaffs_get_tree,
+};
+
+static int yaffs_init_fs_context(struct fs_context *fc)
 {
-
-	return get_sb_bdev(fs, flags, dev_name, data,\
-			   yaffs_internal_read_super_mtd, mnt);\
+	fc->ops = &yaffs_context_ops;
+	return 0;
 }
-#else
-static struct super_block *yaffs_read_super(struct file_system_type *fs,\
-					    int flags, const char *dev_name,\
-					    void *data)\
+
+static int yaffs2_init_fs_context(struct fs_context *fc)
 {
-
-	return get_sb_bdev(fs, flags, dev_name, data,\
-			   yaffs_internal_read_super_mtd);\
+	fc->s_fs_info = (void *)2;
+	fc->ops = &yaffs_context_ops;
+	return 0;
 }
-#endif
 
 static struct file_system_type yaffs_fs_type = {
 	.owner = THIS_MODULE,
 	.name = "yaffs",
-    .mount = yaffs_mount,
-    .kill_sb = kill_block_super,
+	.init_fs_context = yaffs_init_fs_context,
+	.kill_sb = kill_block_super,
 	.fs_flags = FS_REQUIRES_DEV,
 };
-
-
-
-
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 39))
-static struct dentry *yaffs2_mount(struct file_system_type *fs_type, int flags,\
-        const char *dev_name, void *data)\
-{
-    struct fs_context *fc;
-    int ret;
-
-    fc = fs_context_for_mount(fs_type, flags);
-    if (!fc)
-        return ERR_PTR(-ENOMEM);
-
-    fc->s_fs_info = (void *)2; // Pass yaffs_version = 2
-    fc->fs_private = (void *)data; // Pass mount options string
-
-    if (dev_name) {
-        fc->source = dev_name;
-    }
-
-    ret = get_tree_bdev(fc, yaffs_fill_super_callback);
-    if (ret < 0)
-        goto put_fc;
-
-    return fc->root;
-
-put_fc:
-    put_fs_context(fc);
-    return ERR_PTR(ret);
-}
-#elif (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 17))
-static int yaffs2_read_super(struct file_system_type *fs,\
-			     int flags, const char *dev_name, void *data,\
-			     struct vfsmount *mnt)\
-{
-	return get_sb_bdev(fs, flags, dev_name, data,\
-			   yaffs2_internal_read_super_mtd, mnt);\
-}
-#else
-static struct super_block *yaffs2_read_super(struct file_system_type *fs,\
-					     int flags, const char *dev_name,\
-					     void *data)\
-{
-
-	return get_sb_bdev(fs, flags, dev_name, data,\
-			   yaffs2_internal_read_super_mtd);\
-}
-#endif
 
 static struct file_system_type yaffs2_fs_type = {
 	.owner = THIS_MODULE,
 	.name = "yaffs2",
-    .mount = yaffs2_mount,
-    .kill_sb = kill_block_super,
+	.init_fs_context = yaffs2_init_fs_context,
+	.kill_sb = kill_block_super,
 	.fs_flags = FS_REQUIRES_DEV,
 };
 
