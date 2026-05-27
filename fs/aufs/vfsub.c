@@ -263,13 +263,65 @@ void vfsub_call_lkup_one(void *args)
 
 /* ---------------------------------------------------------------------- */
 
+/*
+ * v7.1: lock_rename(), lock_rename_child(), unlock_rename() were unexported
+ * (upstream 4d94ce88c77e).  Open-code an equivalent here so aufs can keep
+ * the existing low-level rename-locking semantics without rewriting callers
+ * to the higher-level start_renaming() API.
+ */
+static struct dentry *au_lock_two_directories(struct dentry *p1,
+					      struct dentry *p2)
+{
+	struct dentry *p = p1, *q = p2, *r;
+
+	while ((r = p->d_parent) != p2 && r != p)
+		p = r;
+	if (r == p2) {
+		inode_lock_nested(p2->d_inode, I_MUTEX_PARENT);
+		inode_lock_nested(p1->d_inode, I_MUTEX_PARENT2);
+		return p;
+	}
+	while ((r = q->d_parent) != p1 && r != p && r != q)
+		q = r;
+	if (r == p1) {
+		inode_lock_nested(p1->d_inode, I_MUTEX_PARENT);
+		inode_lock_nested(p2->d_inode, I_MUTEX_PARENT2);
+		return q;
+	} else if (likely(r == p)) {
+		inode_lock_nested(p1->d_inode, I_MUTEX_PARENT);
+		inode_lock_nested(p2->d_inode, I_MUTEX_PARENT2);
+		return NULL;
+	}
+	mutex_unlock(&p1->d_sb->s_vfs_rename_mutex);
+	return ERR_PTR(-EXDEV);
+}
+
+static struct dentry *au_lock_rename(struct dentry *p1, struct dentry *p2)
+{
+	if (p1 == p2) {
+		inode_lock_nested(p1->d_inode, I_MUTEX_PARENT);
+		return NULL;
+	}
+	mutex_lock(&p1->d_sb->s_vfs_rename_mutex);
+	return au_lock_two_directories(p1, p2);
+}
+
+static void au_unlock_rename(struct dentry *p1, struct dentry *p2)
+{
+	inode_unlock(p1->d_inode);
+	if (p1 != p2) {
+		inode_unlock(p2->d_inode);
+		mutex_unlock(&p1->d_sb->s_vfs_rename_mutex);
+	}
+}
+
 struct dentry *vfsub_lock_rename(struct dentry *d1, struct au_hinode *hdir1,
 				 struct dentry *d2, struct au_hinode *hdir2)
 {
 	struct dentry *d;
 
 	lockdep_off();
-	d = lock_rename(d1, d2);
+	d = au_lock_rename(d1, d2);
 	lockdep_on();
 	if (IS_ERR(d))
 		goto out;
@@ -288,7 +340,7 @@ void vfsub_unlock_rename(struct dentry *d1, struct au_hinode *hdir1,
 	if (hdir1 != hdir2)
 		au_hn_resume(hdir2);
 	lockdep_off();
-	unlock_rename(d1, d2);
+	au_unlock_rename(d1, d2);
 	lockdep_on();
 }
 
