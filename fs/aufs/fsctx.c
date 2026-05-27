@@ -358,24 +358,24 @@ const struct fs_parameter_spec aufs_fsctx_paramspec[] = {
 	/* "add=%d:%s" or "ins=%d:%s" */
 	fsparam_string("add", Opt_add),
 	fsparam_string("ins", Opt_add),
-	fsparam_path("append", Opt_append),
-	fsparam_path("prepend", Opt_prepend),
+	fsparam_string("append", Opt_append),
+	fsparam_string("prepend", Opt_prepend),
 
-	fsparam_path("del", Opt_del),
+	fsparam_string("del", Opt_del),
 	/* fsparam_s32("idel", Opt_idel), */
-	fsparam_path("mod", Opt_mod),
+	fsparam_string("mod", Opt_mod),
 	/* fsparam_string("imod", Opt_imod), */
 
 	fsparam_s32("dirwh", Opt_dirwh),
 
-	fsparam_path("xino", Opt_xino),
+	fsparam_string("xino", Opt_xino),
 	fsparam_flag("noxino", Opt_noxino),
 	fsparam_flag_no("trunc_xino", Opt_trunc_xino),
 	/* "trunc_xino_v=%d:%d" */
 	/* fsparam_string("trunc_xino_v", Opt_trunc_xino_v), */
-	fsparam_path("trunc_xino", Opt_trunc_xino_path),
+	fsparam_string("trunc_xino", Opt_trunc_xino_path),
 	fsparam_s32("itrunc_xino", Opt_itrunc_xino),
-	/* fsparam_path("zxino", Opt_zxino), */
+	/* fsparam_string("zxino", Opt_zxino), */
 	fsparam_flag_no("trunc_xib", Opt_trunc_xib),
 
 #ifdef CONFIG_PROC_FS
