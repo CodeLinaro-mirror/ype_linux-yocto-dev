@@ -650,14 +650,14 @@ static void yaffs_load_name_from_oh(struct yaffs_dev *dev, YCHAR *name,
 				n--;
 			}
 		} else {
-			strncpy(name, oh_name + 1, buff_size - 1);
+			strscpy_pad(name, oh_name + 1, buff_size - 1);
 		}
 	} else {
 #else
 	(void) dev;
 	{
 #endif
-		strncpy(name, oh_name, buff_size - 1);
+		strscpy_pad(name, oh_name, buff_size - 1);
 	}
 }
 
@@ -694,14 +694,14 @@ static void yaffs_load_oh_from_name(struct yaffs_dev *dev, YCHAR *oh_name,
 		} else {
 			/* Unicode name, so save starting at the second YCHAR */
 			*oh_name = 0;
-			strncpy(oh_name + 1, name, YAFFS_MAX_NAME_LENGTH - 2);
+			strscpy_pad(oh_name + 1, name, YAFFS_MAX_NAME_LENGTH - 2);
 		}
 	} else {
 #else
 	dev = dev;
 	{
 #endif
-		strncpy(oh_name, name, YAFFS_MAX_NAME_LENGTH - 1);
+		strscpy_pad(oh_name, name, YAFFS_MAX_NAME_LENGTH - 1);
 	}
 }
 
@@ -2089,7 +2089,7 @@ YCHAR *yaffs_clone_str(const YCHAR *str)
 	len = strnlen(str, YAFFS_MAX_ALIAS_LENGTH);
 	new_str = kmalloc((len + 1) * sizeof(YCHAR), GFP_NOFS);
 	if (new_str) {
-		strncpy(new_str, str, len);
+		strscpy_pad(new_str, str, len);
 		new_str[len] = 0;
 	}
 	return new_str;
@@ -3371,7 +3371,7 @@ int yaffs_update_oh(struct yaffs_obj *in, const YCHAR *name, int force,
 		alias = in->variant.symlink_variant.alias;
 		if (!alias)
 			alias = _Y("no alias");
-		strncpy(oh->alias, alias, YAFFS_MAX_ALIAS_LENGTH);
+		strscpy_pad(oh->alias, alias, YAFFS_MAX_ALIAS_LENGTH);
 		oh->alias[YAFFS_MAX_ALIAS_LENGTH] = 0;
 		break;
 	}
@@ -4512,7 +4512,7 @@ static void yaffs_fix_null_name(struct yaffs_obj *obj, YCHAR *name,
 		/* make up a name */
 		strcpy(local_name, YAFFS_LOSTNFOUND_PREFIX);
 		strcat(local_name, x);
-		strncpy(name, local_name, buffer_size - 1);
+		strscpy_pad(name, local_name, buffer_size - 1);
 	}
 }
 
@@ -4521,7 +4521,7 @@ int yaffs_get_obj_name(struct yaffs_obj *obj, YCHAR *name, int buffer_size)
 	memset(name, 0, buffer_size * sizeof(YCHAR));
 	yaffs_check_obj_details_loaded(obj);
 	if (obj->obj_id == YAFFS_OBJECTID_LOSTNFOUND) {
-		strncpy(name, YAFFS_LOSTNFOUND_NAME, buffer_size - 1);
+		strscpy_pad(name, YAFFS_LOSTNFOUND_NAME, buffer_size - 1);
 	} else if (obj->short_name[0]) {
 		strcpy(name, obj->short_name);
 	} else if (obj->hdr_chunk > 0) {
