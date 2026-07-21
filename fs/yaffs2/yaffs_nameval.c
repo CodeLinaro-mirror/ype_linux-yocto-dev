@@ -135,7 +135,7 @@ int nval_set(struct yaffs_dev *dev,
 	yaffs_do_endian_s32(dev, &reclen_endianised);
 	memcpy(xb + pos, &reclen_endianised, sizeof(reclen_endianised));
 	pos += sizeof(reclen_endianised);
-	strncpy((YCHAR *) (xb + pos), name, reclen);
+	strscpy_pad((YCHAR *) (xb + pos), name, reclen);
 	pos += (namelen + 1);
 	memcpy(xb + pos, buf, bsize);
 	return 0;
